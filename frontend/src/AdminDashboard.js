@@ -12,7 +12,7 @@ const AdminDashboard = () => {
   useEffect(() => {
     if (activeTab === "schools") {
       setLoading(true);
-      fetch("http://127.0.0.1:5000/admin/entries")
+      fetch("https://school-operation-app.onrender.com/admin/entries")
         .then((res) => res.json())
         .then((data) => {
           setEntries(data);
@@ -36,7 +36,7 @@ const AdminDashboard = () => {
   };
 
   const handleSaveClick = (index) => {
-    fetch(`http://127.0.0.1:5000/admin/update/${editedRow.id}`, {
+    fetch(`https://school-operation-app.onrender.com/admin/update/${editedRow.id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(editedRow),
@@ -59,7 +59,7 @@ const AdminDashboard = () => {
 
   useEffect(() => {
     if (activeTab === "users") {
-      fetch("http://127.0.0.1:5000/admin/users")
+      fetch("https://school-operation-app.onrender.com/admin/users")
         .then((res) => res.json())
         .then((data) => setUsers(data))
         .catch((err) => console.error("Error fetching users:", err));
@@ -68,7 +68,7 @@ const AdminDashboard = () => {
 
   const handleAddUser = () => {
     if (!newUser.email || !newUser.password) return alert("Enter email & password");
-    fetch("http://127.0.0.1:5000/admin/users", {
+    fetch("https://school-operation-app.onrender.com/admin/users", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(newUser),
@@ -88,7 +88,7 @@ const AdminDashboard = () => {
     const userToDelete = users.find((u) => u.id === id);
     if (!window.confirm(`Are you sure you want to remove user (${userToDelete?.email})?`)) return;
 
-    fetch(`http://127.0.0.1:5000/admin/users/${id}`, { method: "DELETE" })
+    fetch(`https://school-operation-app.onrender.com/admin/users/${id}`, { method: "DELETE" })
       .then((res) => res.json())
       .then((data) => {
         if (data.success) {
@@ -104,7 +104,7 @@ const AdminDashboard = () => {
 
   useEffect(() => {
     if (activeTab === "submissions") {
-      fetch("http://127.0.0.1:5000/admin/form-submissions")
+      fetch("https://school-operation-app.onrender.com/admin/form-submissions")
         .then((res) => res.json())
         .then((data) => setSubmissions(data))
         .catch((err) => console.error("Error fetching submissions:", err));
@@ -114,7 +114,7 @@ const AdminDashboard = () => {
   const handleDeleteSubmission = (id) => {
     if (!window.confirm("Are you sure you want to delete this submission?")) return;
 
-    fetch(`http://127.0.0.1:5000/admin/form-submissions/${id}`, { method: "DELETE" })
+    fetch(`https://school-operation-app.onrender.com/admin/form-submissions/${id}`, { method: "DELETE" })
       .then((res) => res.json())
       .then((data) => {
         if (data.success) {

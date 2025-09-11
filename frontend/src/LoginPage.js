@@ -12,7 +12,7 @@ export default function LoginPage({ onLogin }) {
     setError("");
     setLoading(true);
     try {
-      const res = await axios.post("http://127.0.0.1:5000/login", { email, password });
+      const res = await axios.post("https://school-operation-app.onrender.com/login", { email, password });
 
       if (res.data.success) {
         localStorage.setItem("userRole", res.data.role);

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 
-const API_BASE = "http://127.0.0.1:5000";
+const API_BASE = "https://school-operation-app.onrender.com";
 
 export default function FormPage() {
   const [schools, setSchools] = useState([]);
