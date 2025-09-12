@@ -1,17 +1,22 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-import sqlite3
+import psycopg2
+import psycopg2.extras
 import os
 from datetime import datetime, timedelta
 
-DB_PATH = "workbook.db"  # ✅ Must match DB created during import
+# ------------------ Database Config ------------------ #
+DB_URL = os.getenv(
+    "DATABASE_URL",
+    "postgresql://schoolops_user:slKvAmqQ03vQUMqVRcKwDULfERfK7h7D@dpg-d31qmtjipnbc73ojcfag-a/schoolops"
+)
 
 app = Flask(__name__)
 CORS(app)
 
 # ------------------ Helpers ------------------ #
 def get_conn():
-    return sqlite3.connect(DB_PATH)
+    return psycopg2.connect(DB_URL)
 
 def init_db():
     conn = get_conn()
@@ -20,22 +25,22 @@ def init_db():
     # Users table
     cur.execute("""
     CREATE TABLE IF NOT EXISTS users (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id SERIAL PRIMARY KEY,
         email TEXT UNIQUE,
         password TEXT,
         role TEXT
     )
     """)
     # Default users (admin + one user)
-    cur.execute("INSERT OR IGNORE INTO users (email, password, role) VALUES (?, ?, ?)",
+    cur.execute("INSERT INTO users (email, password, role) VALUES (%s, %s, %s) ON CONFLICT (email) DO NOTHING",
                 ("admin@onmyowntechnology.com", "admin123", "admin"))
-    cur.execute("INSERT OR IGNORE INTO users (email, password, role) VALUES (?, ?, ?)",
+    cur.execute("INSERT INTO users (email, password, role) VALUES (%s, %s, %s) ON CONFLICT (email) DO NOTHING",
                 ("user1@onmyowntechnology.com", "user123", "user"))
 
     # Entries table (user submissions)
     cur.execute("""
     CREATE TABLE IF NOT EXISTS entries (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id SERIAL PRIMARY KEY,
         school_name TEXT,
         location TEXT,
         grade INTEGER,
@@ -45,6 +50,20 @@ def init_db():
         remark TEXT,
         submitted_by TEXT,
         submitted_at TEXT
+    )
+    """)
+
+    # School data table
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS school_data (
+        id SERIAL PRIMARY KEY,
+        school_name TEXT,
+        location TEXT,
+        grade INTEGER,
+        term1 TEXT,
+        term2 TEXT,
+        term3 TEXT,
+        reporting_branch TEXT
     )
     """)
 
@@ -63,7 +82,7 @@ def login():
 
     conn = get_conn()
     cur = conn.cursor()
-    cur.execute("SELECT password, role FROM users WHERE email=?", (email,))
+    cur.execute("SELECT password, role FROM users WHERE email=%s", (email,))
     row = cur.fetchone()
     conn.close()
 
@@ -92,9 +111,9 @@ def add_user():
     conn = get_conn()
     cur = conn.cursor()
     try:
-        cur.execute("INSERT INTO users (email, password, role) VALUES (?, ?, ?)", (email, password, role))
+        cur.execute("INSERT INTO users (email, password, role) VALUES (%s, %s, %s)", (email, password, role))
         conn.commit()
-    except sqlite3.IntegrityError:
+    except psycopg2.Error:
         return jsonify({"success": False, "message": "User already exists"}), 400
     finally:
         conn.close()
@@ -105,7 +124,7 @@ def add_user():
 def delete_user(user_id):
     conn = get_conn()
     cur = conn.cursor()
-    cur.execute("DELETE FROM users WHERE id=?", (user_id,))
+    cur.execute("DELETE FROM users WHERE id=%s", (user_id,))
     conn.commit()
     conn.close()
     return jsonify({"success": True, "message": "User deleted"})
@@ -144,7 +163,7 @@ def get_form_submissions():
 def delete_submission(submission_id):
     conn = get_conn()
     cur = conn.cursor()
-    cur.execute("DELETE FROM entries WHERE id=?", (submission_id,))
+    cur.execute("DELETE FROM entries WHERE id=%s", (submission_id,))
     conn.commit()
     conn.close()
     return jsonify({"success": True, "message": f"Submission {submission_id} deleted"})
@@ -159,13 +178,13 @@ def get_entries():
     query = "SELECT id, school_name, location, grade, term1, term2, term3, reporting_branch FROM school_data WHERE 1=1"
     params = []
     if school:
-        query += " AND school_name=?"
+        query += " AND school_name=%s"
         params.append(school)
     if location:
-        query += " AND location=?"
+        query += " AND location=%s"
         params.append(location)
     if grade:
-        query += " AND grade=?"
+        query += " AND grade=%s"
         params.append(int(grade))
     query += " ORDER BY school_name, grade"
 
@@ -195,15 +214,15 @@ def update_entry(row_id):
     conn = get_conn()
     cur = conn.cursor()
 
-    cur.execute("SELECT id FROM school_data WHERE id=?", (row_id,))
+    cur.execute("SELECT id FROM school_data WHERE id=%s", (row_id,))
     if not cur.fetchone():
         conn.close()
         return jsonify({"success": False, "message": f"Row {row_id} not found"}), 404
 
     cur.execute("""
         UPDATE school_data
-        SET school_name=?, location=?, grade=?, term1=?, term2=?, term3=?, reporting_branch=?
-        WHERE id=?
+        SET school_name=%s, location=%s, grade=%s, term1=%s, term2=%s, term3=%s, reporting_branch=%s
+        WHERE id=%s
     """, (
         data.get("school_name"), data.get("location"), data.get("grade"),
         data.get("term1"), data.get("term2"), data.get("term3"),
@@ -229,7 +248,7 @@ def update_workbook():
     col = f"term{term}"
     conn = get_conn()
     cur = conn.cursor()
-    cur.execute(f"UPDATE school_data SET {col}=? WHERE school_name=? AND location=? AND grade=?",
+    cur.execute(f"UPDATE school_data SET {col}=%s WHERE school_name=%s AND location=%s AND grade=%s",
                 (workbook, school, location, int(grade)))
     conn.commit()
     conn.close()
@@ -251,7 +270,7 @@ def get_locations():
     school = request.args.get("school", "")
     conn = get_conn()
     cur = conn.cursor()
-    cur.execute("SELECT DISTINCT location FROM school_data WHERE school_name=? ORDER BY location", (school,))
+    cur.execute("SELECT DISTINCT location FROM school_data WHERE school_name=%s ORDER BY location", (school,))
     locations = [r[0] for r in cur.fetchall()]
     conn.close()
     return jsonify(locations)
@@ -262,7 +281,7 @@ def get_reporting_branch():
     location = request.args.get("location", "")
     conn = get_conn()
     cur = conn.cursor()
-    cur.execute("SELECT reporting_branch FROM school_data WHERE school_name=? AND location=? LIMIT 1",
+    cur.execute("SELECT reporting_branch FROM school_data WHERE school_name=%s AND location=%s LIMIT 1",
                 (school, location))
     r = cur.fetchone()
     conn.close()
@@ -281,7 +300,7 @@ def get_workbook():
     col = f"term{term}"
     conn = get_conn()
     cur = conn.cursor()
-    cur.execute(f"SELECT {col} FROM school_data WHERE school_name=? AND location=? AND grade=? LIMIT 1",
+    cur.execute(f"SELECT {col} FROM school_data WHERE school_name=%s AND location=%s AND grade=%s LIMIT 1",
                 (school, location, int(grade)))
     r = cur.fetchone()
     conn.close()
@@ -306,7 +325,7 @@ def submit():
     cur = conn.cursor()
     cur.execute("""
       INSERT INTO entries (school_name, location, grade, term, workbook, count, remark, submitted_by, submitted_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
     """, (school, location, grade, term, workbook, count, remark, submitted_by, submitted_at))
     conn.commit()
     conn.close()
@@ -327,7 +346,5 @@ def entries():
 
 # ------------------ Main ------------------ #
 if __name__ == "__main__":
-    if not os.path.exists(DB_PATH):
-        raise RuntimeError(f"Database not found: {DB_PATH}. Run the import script first.")
     init_db()
-    app.run(debug=True, host="127.0.0.1", port=5000)
+    app.run(debug=True, host="0.0.0.0", port=5000)
