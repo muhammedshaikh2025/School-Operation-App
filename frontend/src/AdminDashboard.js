@@ -1,27 +1,46 @@
 import React, { useEffect, useState } from "react";
+import * as XLSX from "xlsx";
+
+const API_BASE = "https://school-operation-app.onrender.com";
 
 const AdminDashboard = () => {
-  const [activeTab, setActiveTab] = useState("schools");
+  const [activeTab, setActiveTab] = useState("submissions");
+  const [adminName, setAdminName] = useState("Admin");
+  const adminEmail = localStorage.getItem("userEmail") || "";
+
+  useEffect(() => {
+    if (adminEmail) {
+      fetch(`${API_BASE}/user-info?email=${adminEmail}`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.success) setAdminName(data.name);
+        })
+        .catch(() => setAdminName("Admin"));
+    }
+  }, [adminEmail]);
 
   // ------------------ SCHOOL DATA ------------------
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editingRow, setEditingRow] = useState(null);
   const [editedRow, setEditedRow] = useState({});
+  const [newSchool, setNewSchool] = useState({
+    school_name: "",
+    location: "",
+    reporting_branch: "",
+    num_students: "",
+  });
 
   useEffect(() => {
     if (activeTab === "schools") {
       setLoading(true);
-      fetch("https://school-operation-app.onrender.com/admin/entries")
+      fetch(`${API_BASE}/admin/entries`)
         .then((res) => res.json())
         .then((data) => {
           setEntries(data);
           setLoading(false);
         })
-        .catch((err) => {
-          console.error("Error fetching admin entries:", err);
-          setLoading(false);
-        });
+        .catch(() => setLoading(false));
     }
   }, [activeTab]);
 
@@ -29,14 +48,12 @@ const AdminDashboard = () => {
     setEditingRow(index);
     setEditedRow({ ...row });
   };
-
   const handleCancelClick = () => {
     setEditingRow(null);
     setEditedRow({});
   };
-
   const handleSaveClick = (index) => {
-    fetch(`https://school-operation-app.onrender.com/admin/update/${editedRow.id}`, {
+    fetch(`${API_BASE}/admin/update/${editedRow.id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(editedRow),
@@ -48,27 +65,58 @@ const AdminDashboard = () => {
           updated[index] = editedRow;
           setEntries(updated);
           setEditingRow(null);
-        } else alert(data.message || "Update failed");
-      })
-      .catch((err) => console.error("Error updating row:", err));
+        } else alert("Update failed");
+      });
+  };
+  const handleDeleteClick = (id) => {
+    if (!window.confirm("Are you sure you want to remove this school? ❌")) return;
+    fetch(`${API_BASE}/admin/delete/${id}`, { method: "DELETE" })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success) {
+          setEntries(entries.filter((entry) => entry.id !== id));
+          alert("School removed successfully ✅");
+        } else alert("Failed to remove school");
+      });
+  };
+  const handleAddSchool = () => {
+    if (!newSchool.school_name || !newSchool.location)
+      return alert("Enter school name & location");
+
+    fetch(`${API_BASE}/admin/entries`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(newSchool),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success) {
+          setEntries([...entries, { ...newSchool, id: data.id }]);
+          alert("School added successfully ✅");
+          setNewSchool({ school_name: "", location: "", reporting_branch: "", num_students: "" });
+        } else alert("Failed to add school");
+      });
   };
 
   // ------------------ USER MANAGEMENT ------------------
   const [users, setUsers] = useState([]);
-  const [newUser, setNewUser] = useState({ email: "", password: "" });
+  const [newUser, setNewUser] = useState({ name: "", email: "", password: "" });
+  const [editingUser, setEditingUser] = useState(null);
+  const [editedUser, setEditedUser] = useState({});
 
   useEffect(() => {
     if (activeTab === "users") {
-      fetch("https://school-operation-app.onrender.com/admin/users")
+      fetch(`${API_BASE}/admin/users`)
         .then((res) => res.json())
-        .then((data) => setUsers(data))
-        .catch((err) => console.error("Error fetching users:", err));
+        .then((data) => setUsers(data));
     }
   }, [activeTab]);
 
   const handleAddUser = () => {
-    if (!newUser.email || !newUser.password) return alert("Enter email & password");
-    fetch("https://school-operation-app.onrender.com/admin/users", {
+    if (!newUser.email || !newUser.password || !newUser.name)
+      return alert("Enter name, email & password");
+
+    fetch(`${API_BASE}/admin/users`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(newUser),
@@ -78,62 +126,220 @@ const AdminDashboard = () => {
         if (data.success) {
           setUsers([...users, { ...newUser, id: data.id }]);
           alert(`User (${newUser.email}) added successfully ✅`);
-          setNewUser({ email: "", password: "" });
-        } else alert(data.message || "User creation failed");
+          setNewUser({ name: "", email: "", password: "" });
+        } else {
+          // ✅ show backend message
+          alert(data.message || "Failed to add user");
+        }
       })
-      .catch((err) => console.error("Error adding user:", err));
+      .catch(() => {
+        alert("Something went wrong. Please try again.");
+      });
   };
 
   const handleDeleteUser = (id) => {
     const userToDelete = users.find((u) => u.id === id);
-    if (!window.confirm(`Are you sure you want to remove user (${userToDelete?.email})?`)) return;
-
-    fetch(`https://school-operation-app.onrender.com/admin/users/${id}`, { method: "DELETE" })
+    if (!window.confirm(`Are you sure to remove ${userToDelete?.email}?`)) return;
+    fetch(`${API_BASE}/admin/users/${id}`, { method: "DELETE" })
       .then((res) => res.json())
       .then((data) => {
         if (data.success) {
           setUsers(users.filter((u) => u.id !== id));
-          alert(`User (${userToDelete?.email}) removed successfully ❌`);
-        } else alert(data.message || "Delete failed");
-      })
-      .catch((err) => console.error("Error deleting user:", err));
+          alert("User removed");
+        }
+      });
+  };
+  const handleEditUser = (u) => {
+    setEditingUser(u.id);
+    setEditedUser({ ...u });
+  };
+
+  const handleCancelUser = () => {
+    setEditingUser(null);
+    setEditedUser({});
+  };
+
+  const handleSaveUser = (id) => {
+    fetch(`${API_BASE}/admin/users/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(editedUser),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success) {
+          setUsers(users.map((u) => (u.id === id ? editedUser : u)));
+          setEditingUser(null);
+        }
+      });
   };
 
   // ------------------ USER SUBMISSIONS ------------------
   const [submissions, setSubmissions] = useState([]);
+  const [selectedSubs, setSelectedSubs] = useState([]);
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
 
   useEffect(() => {
     if (activeTab === "submissions") {
-      fetch("https://school-operation-app.onrender.com/admin/form-submissions")
+      fetch(`${API_BASE}/admin/form-submissions`)
         .then((res) => res.json())
-        .then((data) => setSubmissions(data))
-        .catch((err) => console.error("Error fetching submissions:", err));
+        .then((data) => setSubmissions(data));
     }
   }, [activeTab]);
 
-  const handleDeleteSubmission = (id) => {
-    if (!window.confirm("Are you sure you want to delete this submission?")) return;
+  const handleDeleteSubmission = (ids) => {
+    if (!ids || ids.length === 0) {
+      alert("No entries selected");
+      return;
+    }
 
-    fetch(`https://school-operation-app.onrender.com/admin/form-submissions/${id}`, { method: "DELETE" })
+    const confirmed = window.confirm("Are you sure you want to delete selected entries?");
+    if (!confirmed) return; // agar cancel kare to kuch na ho
+
+    ids.forEach((id) => {
+      fetch(`${API_BASE}/admin/form-submissions/${id}`, { method: "DELETE" })
+        .then(() => setSubmissions((prev) => prev.filter((s) => s.id !== id)));
+    });
+
+    setSelectedSubs([]);
+  };
+
+  
+
+  const updateDeliveredStatus = (markDelivered) => {
+    if (selectedSubs.length === 0) return alert("Select at least one entry");
+
+    fetch(`${API_BASE}/admin/mark-delivered`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        ids: selectedSubs,
+        delivered: markDelivered ? "Yes" : "No",
+      }),
+    })
       .then((res) => res.json())
       .then((data) => {
         if (data.success) {
-          setSubmissions(submissions.filter((s) => s.id !== id));
-          alert("Submission deleted successfully");
-        } else {
-          alert(data.message || "Delete failed");
-        }
-      })
-      .catch((err) => console.error("Error deleting submission:", err));
+          setSubmissions((prev) =>
+            prev.map((s) =>
+              selectedSubs.includes(s.id) ? { ...s, delivered: markDelivered ? "Yes" : "No" } : s
+            )
+          );
+          alert(markDelivered ? "Marked as Delivered ✅" : "Marked as Undelivered ✅");
+          setSelectedSubs([]);
+        } else alert("Failed to update delivered status");
+      });
   };
 
+  const toggleSelect = (id) => {
+    setSelectedSubs((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+  };
+
+  const filteredSubs = submissions.filter((s) => {
+    if (!s.submitted_at) return false;
+    const submitted = new Date(s.submitted_at);
+    let from = fromDate ? new Date(fromDate) : null;
+    let to = toDate ? new Date(toDate) : null;
+    if (from && submitted < from) return false;
+    if (to) {
+      to.setHours(23, 59, 59, 999);
+      if (submitted > to) return false;
+    }
+    return true;
+  });
+
+  const downloadExcel = () => {
+    const ws = XLSX.utils.json_to_sheet(filteredSubs);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Submissions");
+    XLSX.writeFile(wb, "submissions.xlsx");
+  };
+
+  // ------------------ WORKBOOK STATUS ------------------
+  const [workbooks, setWorkbooks] = useState([]);
+  const [adjustValues, setAdjustValues] = useState({});
+  const [newWorkbook, setNewWorkbook] = useState({
+    grade: "",
+    workbook_name: "",
+    quantity: "",
+  });
+
+  useEffect(() => {
+    if (activeTab === "workbooks") {
+      fetch(`${API_BASE}/admin/workbooks`)
+        .then((res) => res.json())
+        .then((data) => setWorkbooks(data));
+    }
+  }, [activeTab]);
+
+  const handleDeleteWorkbook = (id) => {
+    if (!window.confirm("Are you sure you want to delete this workbook?")) return;
+    fetch(`${API_BASE}/admin/workbooks/${id}`, { method: "DELETE" })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success) {
+          setWorkbooks(workbooks.filter((w) => w.id !== id));
+          alert("Workbook deleted successfully ❌");
+        } else alert("Failed to delete workbook");
+      });
+  };
+
+  const updateQuantity = (id, newQty) => {
+    fetch(`${API_BASE}/admin/workbooks/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ quantity: newQty }),
+    }).then(() =>
+      setWorkbooks(workbooks.map((w) => (w.id === id ? { ...w, quantity: newQty } : w)))
+    );
+  };
+
+  const handleAdjustChange = (id, value) => {
+    setAdjustValues((prev) => ({ ...prev, [id]: value }));
+  };
+  const handleAdjustQuantity = (id, type) => {
+    const adjust = parseInt(adjustValues[id] || 0, 10);
+    if (isNaN(adjust) || adjust === 0) return alert("Enter a valid number");
+    const workbook = workbooks.find((w) => w.id === id);
+    let newQty = workbook.quantity;
+    if (type === "add") newQty += adjust;
+    if (type === "sub") newQty -= adjust;
+    if (newQty < 0) newQty = 0;
+    updateQuantity(id, newQty);
+    setAdjustValues((prev) => ({ ...prev, [id]: "" }));
+  };
+
+  const handleAddWorkbook = () => {
+    const { grade, workbook_name, quantity } = newWorkbook;
+    if (!grade || !workbook_name || !quantity) return alert("Enter grade, workbook name & quantity");
+    const qtyNum = parseInt(quantity, 10);
+    if (isNaN(qtyNum) || qtyNum < 0) return alert("Enter valid quantity");
+    fetch(`${API_BASE}/admin/workbooks`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ grade, workbook_name, quantity: qtyNum }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success) {
+          setWorkbooks([...workbooks, { ...newWorkbook, id: data.id, quantity: qtyNum }]);
+          alert("Workbook added successfully ✅");
+          setNewWorkbook({ grade: "", workbook_name: "", quantity: "" });
+        } else alert("Failed to add workbook");
+      });
+  };
+
+  // ------------------ COMMON ------------------
   const renderTable = (columns, data, renderRow) => (
     <div style={{ overflowX: "auto" }}>
-      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "14px" }}>
-        <thead style={{ backgroundColor: "#f0f0f0", position: "sticky", top: 0 }}>
+      <table style={{ width: "100%", borderCollapse: "collapse" }}>
+        <thead style={{ background: "#f0f0f0" }}>
           <tr>
-            {columns.map((col) => (
-              <th key={col} style={{ border: "1px solid #ccc", padding: "8px", textAlign: "left" }}>{col}</th>
+            {columns.map((c) => (
+              <th key={c} style={{ border: "1px solid #ccc", padding: "6px" }}>{c}</th>
             ))}
           </tr>
         </thead>
@@ -142,117 +348,257 @@ const AdminDashboard = () => {
     </div>
   );
 
-  const btnStyle = (active) => ({
-    padding: "8px 16px",
+  const buttonStyle = (color) => ({
+    padding: "6px 10px",
     borderRadius: "4px",
-    margin: "0 4px",
-    cursor: "pointer",
+    margin: "0 2px",
     border: "none",
-    backgroundColor: active ? "#1D4ED8" : "#E5E7EB",
-    color: active ? "#fff" : "#000"
+    cursor: "pointer",
+    background: color,
+    color: "#fff",
   });
 
+  const logout = () => {
+    localStorage.clear();
+    window.location.href = "/";
+  };
+
   return (
-    <div style={{ padding: "24px", maxWidth: "95%", margin: "0 auto" }}>
-      <h1 style={{ fontSize: "48px", fontWeight: "bold", color: "red", textAlign: "center", marginBottom: "24px" }}>
-        Admin Dashboard
-      </h1>
+    <div style={{ padding: "20px", fontFamily: "Arial, sans-serif" }}>
+      {/* Header */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <img src="/OMOTEC.png" alt="Logo" style={{ height: 50, width: 200 }} />
+        
+        <button onClick={logout} style={{ ...buttonStyle("red"), padding: "8px 12px" }}>
+          Logout
+        </button>
+      </div>
+      <div style={{ display: "flex", justifyContent: "center", alignItems: "center" }}>
+        <h1>Welcome {adminName}</h1>
+      </div>
+
 
       {/* Tabs */}
-      <div style={{ display: "flex", justifyContent: "center", flexWrap: "wrap", gap: "8px", marginBottom: "24px" }}>
-        {["schools", "users", "submissions"].map((tab) => (
-          <button key={tab} onClick={() => setActiveTab(tab)} style={btnStyle(activeTab === tab)}>
-            {tab === "schools" ? "School Data" : tab === "users" ? "User Management" : "User Submissions"}
+      <div style={{ marginTop: "20px", textAlign: "center" , marginBottom:"10px"}}>
+        {["schools", "users", "submissions", "workbooks"].map((tab) => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            style={{
+              ...buttonStyle(activeTab === tab ? "#1D4ED8" : "#9CA3AF"),
+              color: "#fff",
+            }}
+          >
+            {tab === "schools"
+              ? "School Data"
+              : tab === "users"
+              ? "User Management"
+              : tab === "submissions"
+              ? "User Submissions"
+              : "Workbook Status"}
           </button>
         ))}
       </div>
 
-      {/* School Data */}
-      {activeTab === "schools" &&
-        (loading ? (
-          <h2 style={{ textAlign: "center", marginTop: "40px" }}>Loading...</h2>
-        ) : renderTable(
-          ["School", "Location", "Grade", "Term 1", "Term 2", "Term 3", "Reporting Branch", "Actions"],
-          entries,
-          (row, index) => (
-            <tr key={row.id} style={{ backgroundColor: "#fff", transition: "background-color 0.2s" }}
-                onMouseEnter={e => e.currentTarget.style.backgroundColor = "#f9fafb"}
-                onMouseLeave={e => e.currentTarget.style.backgroundColor = "#fff"}>
-              {editingRow === index ? (
+      {/* Schools */}
+      {activeTab === "schools" && (
+        loading ? <h3>Loading...</h3> : (
+          <>
+            <div style={{ margin: "10px 0", display: "flex", gap: "8px" }}>
+              <input placeholder="School Name" value={newSchool.school_name} onChange={(e) => setNewSchool({ ...newSchool, school_name: e.target.value })} />
+              <input placeholder="Location" value={newSchool.location} onChange={(e) => setNewSchool({ ...newSchool, location: e.target.value })} />
+              <input placeholder="Books Reporting Branch" value={newSchool.reporting_branch} onChange={(e) => setNewSchool({ ...newSchool, reporting_branch: e.target.value })} />
+              <input placeholder="No. of Students" value={newSchool.num_students} onChange={(e) => setNewSchool({ ...newSchool, num_students: e.target.value })} />
+              <button onClick={handleAddSchool} style={buttonStyle("green")}>Add School</button>
+            </div>
+            {renderTable(
+              ["School", "Location", "Books Reporting Branch", "No. of Students", "Actions"],
+              entries,
+              (row, index) => (
+                <tr key={row.id}>
+                  {editingRow === index ? (
+                    <>
+                      {["school_name", "location", "reporting_branch", "num_students"].map((k) => (
+                        <td key={k}><input value={editedRow[k] || ""} onChange={(e) => setEditedRow({ ...editedRow, [k]: e.target.value })} /></td>
+                      ))}
+                      <td>
+                        <button onClick={() => handleSaveClick(index)} style={buttonStyle("green")}>Save</button>
+                        <button onClick={handleCancelClick} style={buttonStyle("grey")}>Cancel</button>
+                      </td>
+                    </>
+                  ) : (
+                    <>
+                      <td>{row.school_name}</td>
+                      <td>{row.location}</td>
+                      <td>{row.reporting_branch}</td>
+                      <td>{row.num_students}</td>
+                      <td>
+                        <button onClick={() => handleEditClick(row, index)} style={buttonStyle("#1864c7ff")}>Edit</button>
+                        <button onClick={() => handleDeleteClick(row.id)} style={buttonStyle("red")}>Remove</button>
+                      </td>
+                    </>
+                  )}
+                </tr>
+              )
+            )}
+          </>
+        )
+      )}
+
+      
+
+      {/* Users */}
+      {activeTab === "users" && (
+        <div>
+          <div style={{ display: "flex", gap: "8px", marginBottom: "12px" }}>
+            <input placeholder="Name" value={newUser.name} onChange={(e) => setNewUser({ ...newUser, name: e.target.value })} />
+            <input placeholder="Email" value={newUser.email} onChange={(e) => setNewUser({ ...newUser, email: e.target.value })} />
+            <input placeholder="Password" value={newUser.password} onChange={(e) => setNewUser({ ...newUser, password: e.target.value })} />
+            <button onClick={handleAddUser} style={buttonStyle("green")}>Add</button>
+          </div>
+          {renderTable(["ID", "Name", "Email", "Password", "Actions"], users, (u) => (
+            <tr key={u.id}>
+              {editingUser === u.id ? (
                 <>
-                  {["school_name","location","grade","term1","term2","term3","reporting_branch"].map((key) => (
-                    <td key={key} style={{ border: "1px solid #ccc", padding: "4px" }}>
-                      <input
-                        type={key==="grade"?"number":"text"}
-                        value={editedRow[key] || ""}
-                        onChange={(e) => setEditedRow({ ...editedRow, [key]: e.target.value })}
-                        style={{ width: "100%", padding: "4px", borderRadius: "4px", border: "1px solid #ccc" }}
-                      />
-                    </td>
-                  ))}
-                  <td style={{ border: "1px solid #ccc", padding: "4px", display: "flex", gap: "4px" }}>
-                    <button onClick={() => handleSaveClick(index)} style={{ backgroundColor: "green", color: "#fff", padding: "4px 8px", borderRadius: "4px", border: "none" }}>Save</button>
-                    <button onClick={handleCancelClick} style={{ backgroundColor: "#888", color: "#fff", padding: "4px 8px", borderRadius: "4px", border: "none" }}>Cancel</button>
+                  <td>{u.id}</td>
+                  <td>
+                    <input value={editedUser.name} onChange={(e) => setEditedUser({ ...editedUser, name: e.target.value })} />
+                  </td>
+                  <td>
+                    <input value={editedUser.email} onChange={(e) => setEditedUser({ ...editedUser, email: e.target.value })} />
+                  </td>
+                  <td>
+                    <input value={editedUser.password} onChange={(e) => setEditedUser({ ...editedUser, password: e.target.value })} />
+                  </td>
+                  <td>
+                    <button onClick={() => handleSaveUser(u.id)} style={buttonStyle("green")}>Save</button>
+                    <button onClick={handleCancelUser} style={buttonStyle("grey")}>Cancel</button>
                   </td>
                 </>
               ) : (
                 <>
-                  <td style={{ border: "1px solid #ccc", padding: "4px" }}>{row.school_name}</td>
-                  <td style={{ border: "1px solid #ccc", padding: "4px" }}>{row.location}</td>
-                  <td style={{ border: "1px solid #ccc", padding: "4px" }}>{row.grade}</td>
-                  <td style={{ border: "1px solid #ccc", padding: "4px" }}>{row.term1||"-"}</td>
-                  <td style={{ border: "1px solid #ccc", padding: "4px" }}>{row.term2||"-"}</td>
-                  <td style={{ border: "1px solid #ccc", padding: "4px" }}>{row.term3||"-"}</td>
-                  <td style={{ border: "1px solid #ccc", padding: "4px" }}>{row.reporting_branch}</td>
-                  <td style={{ border: "1px solid #ccc", padding: "4px" }}>
-                    <button onClick={() => handleEditClick(row,index)} style={{ backgroundColor: "#1D4ED8", color: "#fff", padding: "4px 8px", borderRadius: "4px", border: "none" }}>Edit</button>
+                  <td>{u.id}</td>
+                  <td>{u.name}</td>
+                  <td>{u.email}</td>
+                  <td>{u.password}</td>
+                  <td>
+                    <button onClick={() => handleEditUser(u)} style={buttonStyle("#1864c7ff")}>Edit</button>
+                    <button onClick={() => handleDeleteUser(u.id)} style={buttonStyle("red")}>Delete</button>
                   </td>
                 </>
               )}
-            </tr>
-          )
-        ))}
-
-      {/* User Management */}
-      {activeTab === "users" && (
-        <div>
-          <h2 style={{ fontSize: "18px", fontWeight: "600", marginBottom: "16px" }}>Manage Users</h2>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginBottom: "16px" }}>
-            <input type="email" placeholder="Email" value={newUser.email} onChange={(e) => setNewUser({...newUser,email:e.target.value})} style={{ padding: "4px", borderRadius: "4px", border: "1px solid #ccc", minWidth: "150px", flex: "1" }} />
-            <input type="password" placeholder="Password" value={newUser.password} onChange={(e) => setNewUser({...newUser,password:e.target.value})} style={{ padding: "4px", borderRadius: "4px", border: "1px solid #ccc", minWidth: "150px", flex: "1" }} />
-            <button onClick={handleAddUser} style={{ backgroundColor: "green", color: "#fff", padding: "4px 12px", borderRadius: "4px", border: "none" }}>Add User</button>
-          </div>
-          {renderTable(["ID","Email","Actions"], users, (user) => (
-            <tr key={user.id} style={{ backgroundColor: "#fff", transition: "background-color 0.2s" }}
-                onMouseEnter={e => e.currentTarget.style.backgroundColor = "#f9fafb"}
-                onMouseLeave={e => e.currentTarget.style.backgroundColor = "#fff"}>
-              <td style={{ border: "1px solid #ccc", padding: "4px" }}>{user.id}</td>
-              <td style={{ border: "1px solid #ccc", padding: "4px" }}>{user.email}</td>
-              <td style={{ border: "1px solid #ccc", padding: "4px" }}>
-                <button onClick={()=>handleDeleteUser(user.id)} style={{ backgroundColor: "red", color: "#fff", padding: "4px 8px", borderRadius: "4px", border: "none" }}>Remove</button>
-              </td>
             </tr>
           ))}
         </div>
       )}
 
-      {/* User Submissions */}
-      {activeTab === "submissions" && renderTable(
-        ["ID","School","Location","Grade","Term","Workbook","Count","Remark","Submitted By","Submitted At","Actions"],
-        submissions,
-        (s)=>(
-          <tr key={s.id} style={{ backgroundColor: "#fff", transition: "background-color 0.2s" }}
-              onMouseEnter={e => e.currentTarget.style.backgroundColor = "#f9fafb"}
-              onMouseLeave={e => e.currentTarget.style.backgroundColor = "#fff"}>
-            {["id","school_name","location","grade","term","workbook","count","remark","submitted_by","submitted_at"].map((key)=>(
-              <td key={key} style={{ border: "1px solid #ccc", padding: "4px" }}>{s[key]}</td>
-            ))}
-            <td style={{ border: "1px solid #ccc", padding: "4px" }}>
-              <button onClick={() => handleDeleteSubmission(s.id)} style={{ backgroundColor: "red", color: "#fff", padding: "4px 8px", borderRadius: "4px", border: "none" }}>Delete</button>
-            </td>
-          </tr>
-        )
+      {/* Submissions */}
+      {activeTab === "submissions" && (
+        <div>
+          <div style={{ marginTop: "10px", marginBottom: "10px", display: "flex", gap: "10px", alignItems: "center" }}>
+            <label>From: </label>
+            <input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
+            <label>To: </label>
+            <input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} />
+
+            <button onClick={() => handleDeleteSubmission(selectedSubs)} style={buttonStyle("red")}>Delete Selected</button>
+            <button onClick={() => updateDeliveredStatus(true)} style={buttonStyle("green")}>Mark Delivered</button>
+            <button onClick={() => updateDeliveredStatus(false)} style={buttonStyle("grey")}>Mark Undelivered</button>
+            <button onClick={downloadExcel} style={buttonStyle("green")}>Download Excel</button>
+          </div>
+
+          {renderTable(
+            ["Select", "ID", "School", "Grade", "Term", "Workbook", "Count", "Remark", "Submitted_By", "Submitted_At", "Delivered"],
+            filteredSubs,
+            (s) => (
+              <tr key={s.id}>
+                <td>
+                  <input type="checkbox" checked={selectedSubs.includes(s.id)} onChange={() => toggleSelect(s.id)} />
+                </td>
+                <td>{s.id}</td>
+                <td>{s.school_name}</td>
+                <td>{s.grade}</td>
+                <td>{s.term}</td>
+                <td>{s.workbook}</td>
+                <td>{s.count}</td>
+                <td>{s.remark}</td>
+                <td>{s.submitted_by}</td>
+                <td>{s.submitted_at}</td>
+                <td>{s.delivered}</td>
+              </tr>
+            )
+          )}
+        </div>
       )}
+
+      {/* Workbooks */}
+      {activeTab === "workbooks" && (
+        <>
+          {/* Add Workbook Section */}
+          <div style={{ margin: "10px 0", display: "flex", gap: "8px" }}>
+            <input
+              placeholder="Grade"
+              min="1"
+              value={newWorkbook.grade}
+              onChange={(e) => setNewWorkbook({ ...newWorkbook, grade: e.target.value })}
+              style={{ width: "70px" }}
+            />
+            <input
+              placeholder="Workbook Name"
+              value={newWorkbook.workbook_name}
+              onChange={(e) => setNewWorkbook({ ...newWorkbook, workbook_name: e.target.value })}
+            />
+            <input
+              placeholder="Quantity"
+              type="number"
+              min="0"
+              value={newWorkbook.quantity}
+              onChange={(e) => setNewWorkbook({ ...newWorkbook, quantity: e.target.value })}
+              style={{ width: "70px" }}
+            />
+            <button
+              onClick={handleAddWorkbook}
+              style={{ background: "green", color: "#fff", border: "none", borderRadius: "4px", padding: "6px 12px" }}
+            >
+              Add Workbook
+            </button>
+          </div>
+
+          {/* Existing Workbooks Table */}
+          {renderTable(
+            ["ID", "Grade", "Workbook", "Quantity", "Action"],
+            workbooks,
+            (w) => (
+              <tr key={w.id}>
+                <td>{w.id}</td>
+                <td>{w.grade}</td>
+                <td>{w.workbook_name}</td>
+                <td>{w.quantity}</td>
+                <td>
+                  <input
+                    type="number"
+                    min="0"
+                    value={adjustValues[w.id] || ""}
+                    onChange={(e) => handleAdjustChange(w.id, e.target.value)}
+                    style={{ width: "70px", marginRight: "5px" }}
+                  />
+                  <button onClick={() => handleAdjustQuantity(w.id, "add")} style={buttonStyle("green")}>New Stock</button>
+                  <button onClick={() => handleAdjustQuantity(w.id, "sub")} style={buttonStyle("grey")}>Books Delivered</button>
+                  <button
+                    onClick={() => handleDeleteWorkbook(w.id)}
+                    style={{ marginLeft: "5px", background: "red", color: "#fff", border: "none", borderRadius: "4px", padding: "4px 8px" }}
+                  >
+                    Delete
+                  </button>
+                </td>
+              </tr>
+            )
+          )}
+        </>
+      )}
+
+
+
     </div>
   );
 };

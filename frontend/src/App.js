@@ -1,9 +1,9 @@
 import React, { useState } from "react";
+import { Routes, Route } from "react-router-dom";
 import LoginPage from "./LoginPage";
 import FormPage from "./FormPage";
 import AdminDashboard from "./AdminDashboard";
-
-
+import ResetPassword from "./ResetPassword"; // new component
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -14,15 +14,19 @@ function App() {
     setRole(localStorage.getItem("userRole")); // fetch role from login
   };
 
-  if (!isLoggedIn) {
-    return <LoginPage onLogin={handleLogin} />;
-  }
+  return (
+    <Routes>
+      {/* Default: login */}
+      {!isLoggedIn && <Route path="/" element={<LoginPage onLogin={handleLogin} />} />}
 
-  if (role === "admin") {
-    return <AdminDashboard />;
-  }
+      {/* After login */}
+      {isLoggedIn && role === "admin" && <Route path="/" element={<AdminDashboard />} />}
+      {isLoggedIn && role !== "admin" && <Route path="/" element={<FormPage />} />}
 
-  return <FormPage />;
+      {/* Reset password (public) */}
+      <Route path="/reset-password" element={<ResetPassword />} />
+    </Routes>
+  );
 }
 
 export default App;

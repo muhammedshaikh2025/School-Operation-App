@@ -1,6 +1,8 @@
 import React, { useState } from "react";
 import axios from "axios";
 
+const API_BASE = "https://school-operation-app.onrender.com"; // ✅ base URL backend ka
+
 export default function LoginPage({ onLogin }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -12,7 +14,7 @@ export default function LoginPage({ onLogin }) {
     setError("");
     setLoading(true);
     try {
-      const res = await axios.post("https://school-operation-app.onrender.com/login", { email, password });
+      const res = await axios.post(`${API_BASE}/login`, { email, password });
 
       if (res.data.success) {
         localStorage.setItem("userRole", res.data.role);
@@ -28,8 +30,44 @@ export default function LoginPage({ onLogin }) {
     }
   };
 
+  // ✅ Forgot Password flow
+  const handleForgotPassword = async () => {
+    const userEmail =
+      email || window.prompt("Enter your company email (example@onmyowntechnology.com)");
+
+    if (!userEmail) return;
+
+    if (!userEmail.endsWith("@onmyowntechnology.com")) {
+      return alert("Please enter a @onmyowntechnology.com email");
+    }
+
+    try {
+      setLoading(true);
+      const res = await axios.post(`${API_BASE}/forgot-password`, { email: userEmail });
+      if (res.data.success) {
+        alert(res.data.message || "Check your email for instructions");
+      } else {
+        alert(res.data.message || "Could not process request");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Error contacting server. Try again later.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="login-container" style={styles.container}>
+      {/* ✅ Company Logo */}
+      <div style={{ textAlign: "center", marginBottom: "20px" }}>
+        <img
+          src="/OMOTEC.png"
+          alt="Company Logo"
+          style={{ width: "200px", height: "60" }}
+        />
+      </div>
+
       <h2 style={styles.title}>Login</h2>
       <form onSubmit={handleLogin} style={styles.form}>
         <input
@@ -53,11 +91,18 @@ export default function LoginPage({ onLogin }) {
           {loading ? "Logging in..." : "Login"}
         </button>
       </form>
+
+      {/* ✅ Forgot password button */}
+      <div style={{ marginTop: "15px", textAlign: "center" }}>
+        <button onClick={handleForgotPassword} style={styles.linkButton}>
+          Forgot Password?
+        </button>
+      </div>
     </div>
   );
 }
 
-// ✅ Simple inline styles for modern look
+// ✅ Styles
 const styles = {
   container: {
     maxWidth: "400px",
@@ -93,6 +138,14 @@ const styles = {
     fontSize: "16px",
     cursor: "pointer",
     transition: "background 0.3s",
+  },
+  linkButton: {
+    background: "none",
+    border: "none",
+    color: "#007bff",
+    cursor: "pointer",
+    fontSize: "14px",
+    textDecoration: "underline",
   },
   error: {
     color: "red",
