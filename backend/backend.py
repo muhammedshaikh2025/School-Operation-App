@@ -67,7 +67,7 @@ def forgot_password():
     conn.commit()
     conn.close()
 
-    reset_link = f"http://localhost:3000/reset-password?token={token}"  # change to production URL
+    reset_link = f"https://school-operation-app.vercel.app/reset-password?token={token}"  # change to production URL
     try:
         send_reset_email(email, reset_link)
         return jsonify({"success": True, "message": "Password reset link sent to your email."})
