@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 
-const API_BASE = "https://school-operation-app.vercel.app";
+const API_BASE = "https://school-operation-app.onrender.com";
 
 const FormPage = () => {
   const [schools, setSchools] = useState([]);

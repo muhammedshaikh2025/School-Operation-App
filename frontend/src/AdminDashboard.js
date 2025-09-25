@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import * as XLSX from "xlsx";
 
-const API_BASE = "https://school-operation-app.vercel.app";
+const API_BASE = "https://school-operation-app.onrender.com";
 
 const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState("submissions");
