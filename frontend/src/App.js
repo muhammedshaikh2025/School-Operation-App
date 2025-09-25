@@ -35,7 +35,7 @@ function App() {
   return (
     <Routes>
       {/* Default: login */}
-      {!isLoggedIn && <Route path="/login" element={<LoginPage onLogin={handleLogin} />} />}
+      {!isLoggedIn && <Route path="/" element={<LoginPage onLogin={handleLogin} />} />}
 
       {/* After login */}
       {isLoggedIn && role === "admin" && (

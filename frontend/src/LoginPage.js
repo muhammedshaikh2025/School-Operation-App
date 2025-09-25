@@ -14,7 +14,7 @@ export default function LoginPage({ onLogin }) {
     setError("");
     setLoading(true);
     try {
-      const res = await axios.post(`${API_BASE}/login`, { email, password });
+      const res = await axios.post(`${API_BASE}/`, { email, password });
 
       if (res.data.success) {
         localStorage.setItem("userRole", res.data.role);
