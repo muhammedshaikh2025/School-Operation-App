@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import axios from "axios";
 
-const API_BASE = "https://school-operation-app.onrender.com"; // ✅ base URL backend ka
+const API_BASE = "https://school-operation-app.vercel.app";
 
 export default function LoginPage({ onLogin }) {
   const [email, setEmail] = useState("");
@@ -30,7 +30,7 @@ export default function LoginPage({ onLogin }) {
     }
   };
 
-  // ✅ Forgot Password flow
+  // Forgot Password flow
   const handleForgotPassword = async () => {
     const userEmail =
       email || window.prompt("Enter your company email (example@onmyowntechnology.com)");
@@ -57,14 +57,58 @@ export default function LoginPage({ onLogin }) {
     }
   };
 
+  // Reusable styles with hover effects
+  const buttonStyle = {
+    padding: "12px",
+    borderRadius: "8px",
+    border: "none",
+    backgroundColor: "#007bff",
+    color: "#fff",
+    fontSize: "16px",
+    cursor: "pointer",
+    transition: "background-color 0.3s ease",
+  };
+
+  const loginButtonHoverStyle = {
+    backgroundColor: "#0056b3",
+  };
+
+  const linkButtonStyle = {
+    background: "none",
+    border: "none",
+    color: "#007bff",
+    cursor: "pointer",
+    fontSize: "14px",
+    textDecoration: "underline",
+    transition: "color 0.3s ease",
+  };
+
+  const linkButtonHoverStyle = {
+    color: "#004085",
+  };
+
+  const inputStyle = {
+    padding: "12px",
+    borderRadius: "8px",
+    border: "1px solid #ccc",
+    fontSize: "16px",
+    transition: "border-color 0.3s ease, box-shadow 0.3s ease",
+  };
+
+  const inputFocusStyle = {
+    borderColor: "#007bff",
+    boxShadow: "0 0 0 2px rgba(0, 123, 255, 0.25)",
+    outline: "none",
+  };
+
   return (
     <div className="login-container" style={styles.container}>
-      {/* ✅ Company Logo */}
+      {/* Company Logo */}
       <div style={{ textAlign: "center", marginBottom: "20px" }}>
         <img
           src="/OMOTEC.png"
           alt="Company Logo"
-          style={{ width: "200px", height: "60" }}
+          style={styles.logo}
         />
       </div>
 
@@ -75,7 +119,11 @@ export default function LoginPage({ onLogin }) {
           placeholder="Email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          style={styles.input}
+          style={inputStyle}
+          onFocus={(e) => Object.assign(e.target.style, inputFocusStyle)}
+          onBlur={(e) => Object.assign(e.target.style, inputStyle)}
+          onMouseEnter={(e) => Object.assign(e.target.style, inputFocusStyle)}
+          onMouseLeave={(e) => Object.assign(e.target.style, inputStyle)}
           required
         />
         <input
@@ -83,18 +131,33 @@ export default function LoginPage({ onLogin }) {
           placeholder="Password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          style={styles.input}
+          style={inputStyle}
+          onFocus={(e) => Object.assign(e.target.style, inputFocusStyle)}
+          onBlur={(e) => Object.assign(e.target.style, inputStyle)}
+          onMouseEnter={(e) => Object.assign(e.target.style, inputFocusStyle)}
+          onMouseLeave={(e) => Object.assign(e.target.style, inputStyle)}
           required
         />
         {error && <p style={styles.error}>{error}</p>}
-        <button type="submit" style={styles.button} disabled={loading}>
+        <button
+          type="submit"
+          style={buttonStyle}
+          disabled={loading}
+          onMouseEnter={(e) => Object.assign(e.currentTarget.style, loginButtonHoverStyle)}
+          onMouseLeave={(e) => Object.assign(e.currentTarget.style, buttonStyle)}
+        >
           {loading ? "Logging in..." : "Login"}
         </button>
       </form>
 
-      {/* ✅ Forgot password button */}
+      {/* Forgot password button */}
       <div style={{ marginTop: "15px", textAlign: "center" }}>
-        <button onClick={handleForgotPassword} style={styles.linkButton}>
+        <button
+          onClick={handleForgotPassword}
+          style={linkButtonStyle}
+          onMouseEnter={(e) => Object.assign(e.currentTarget.style, linkButtonHoverStyle)}
+          onMouseLeave={(e) => Object.assign(e.currentTarget.style, linkButtonStyle)}
+        >
           Forgot Password?
         </button>
       </div>
@@ -102,7 +165,7 @@ export default function LoginPage({ onLogin }) {
   );
 }
 
-// ✅ Styles
+// Main style object
 const styles = {
   container: {
     maxWidth: "400px",
@@ -112,6 +175,11 @@ const styles = {
     boxShadow: "0 4px 20px rgba(0,0,0,0.1)",
     backgroundColor: "#fff",
     fontFamily: "Arial, sans-serif",
+  },
+  logo: {
+    width: "200px",
+    height: "auto",
+    marginBottom: "10px",
   },
   title: {
     textAlign: "center",
@@ -123,33 +191,10 @@ const styles = {
     flexDirection: "column",
     gap: "15px",
   },
-  input: {
-    padding: "12px",
-    borderRadius: "8px",
-    border: "1px solid #ccc",
-    fontSize: "16px",
-  },
-  button: {
-    padding: "12px",
-    borderRadius: "8px",
-    border: "none",
-    backgroundColor: "#007bff",
-    color: "#fff",
-    fontSize: "16px",
-    cursor: "pointer",
-    transition: "background 0.3s",
-  },
-  linkButton: {
-    background: "none",
-    border: "none",
-    color: "#007bff",
-    cursor: "pointer",
-    fontSize: "14px",
-    textDecoration: "underline",
-  },
   error: {
     color: "red",
     fontSize: "14px",
     textAlign: "center",
+    margin: "0",
   },
 };

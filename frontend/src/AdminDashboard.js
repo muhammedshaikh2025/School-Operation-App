@@ -1,13 +1,14 @@
 import React, { useEffect, useState } from "react";
 import * as XLSX from "xlsx";
 
-const API_BASE = "https://school-operation-app.onrender.com";
+const API_BASE = "https://school-operation-app.vercel.app";
 
 const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState("submissions");
   const [adminName, setAdminName] = useState("Admin");
   const adminEmail = localStorage.getItem("userEmail") || "";
 
+  // Fetch admin name
   useEffect(() => {
     if (adminEmail) {
       fetch(`${API_BASE}/user-info?email=${adminEmail}`)
@@ -128,7 +129,6 @@ const AdminDashboard = () => {
           alert(`User (${newUser.email}) added successfully ✅`);
           setNewUser({ name: "", email: "", password: "" });
         } else {
-          // ✅ show backend message
           alert(data.message || "Failed to add user");
         }
       })
@@ -195,7 +195,7 @@ const AdminDashboard = () => {
     }
 
     const confirmed = window.confirm("Are you sure you want to delete selected entries?");
-    if (!confirmed) return; // agar cancel kare to kuch na ho
+    if (!confirmed) return;
 
     ids.forEach((id) => {
       fetch(`${API_BASE}/admin/form-submissions/${id}`, { method: "DELETE" })
@@ -204,8 +204,6 @@ const AdminDashboard = () => {
 
     setSelectedSubs([]);
   };
-
-  
 
   const updateDeliveredStatus = (markDelivered) => {
     if (selectedSubs.length === 0) return alert("Select at least one entry");
@@ -335,27 +333,59 @@ const AdminDashboard = () => {
   // ------------------ COMMON ------------------
   const renderTable = (columns, data, renderRow) => (
     <div style={{ overflowX: "auto" }}>
-      <table style={{ width: "100%", borderCollapse: "collapse" }}>
+      <table
+        style={{
+          width: "100%",
+          borderCollapse: "collapse",
+          minWidth: "600px",
+        }}
+      >
         <thead style={{ background: "#f0f0f0" }}>
           <tr>
             {columns.map((c) => (
-              <th key={c} style={{ border: "1px solid #ccc", padding: "6px" }}>{c}</th>
+              <th
+                key={c}
+                style={{
+                  border: "1px solid #ccc",
+                  padding: "8px",
+                  textAlign: "center",
+                  fontWeight: "bold",
+                  background: "#e5e7eb",
+                }}
+              >
+                {c}
+              </th>
             ))}
           </tr>
         </thead>
-        <tbody>{data.map(renderRow)}</tbody>
+        <tbody>
+          {data.map((row, idx) => (
+            <tr
+              key={idx}
+              style={{
+                borderBottom: "1px solid #ddd",
+                transition: "background 0.3s",
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = "#f9fafb")}
+              onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+            >
+              {renderRow(row, idx).props.children}
+            </tr>
+          ))}
+        </tbody>
       </table>
     </div>
   );
 
   const buttonStyle = (color) => ({
-    padding: "6px 10px",
-    borderRadius: "4px",
-    margin: "0 2px",
+    padding: "6px 12px",
+    borderRadius: "6px",
+    margin: "2px",
     border: "none",
     cursor: "pointer",
     background: color,
     color: "#fff",
+    transition: "all 0.3s",
   });
 
   const logout = () => {
@@ -364,30 +394,58 @@ const AdminDashboard = () => {
   };
 
   return (
-    <div style={{ padding: "20px", fontFamily: "Arial, sans-serif" }}>
+    <div
+      style={{
+        padding: "20px",
+        fontFamily: "Arial, sans-serif",
+        maxWidth: "100%",
+      }}
+    >
       {/* Header */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "row",
+          justifyContent: "space-between",
+          alignItems: "center",
+          flexWrap: "wrap",
+        }}
+      >
         <img src="/OMOTEC.png" alt="Logo" style={{ height: 50, width: 200 }} />
-        
-        <button onClick={logout} style={{ ...buttonStyle("red"), padding: "8px 12px" }}>
+
+        <button
+          onClick={logout}
+          style={{ ...buttonStyle("red"), padding: "8px 14px" }}
+          onMouseEnter={(e) => (e.target.style.opacity = "0.8")}
+          onMouseLeave={(e) => (e.target.style.opacity = "1")}
+        >
           Logout
         </button>
       </div>
-      <div style={{ display: "flex", justifyContent: "center", alignItems: "center" }}>
+      <div style={{ textAlign: "center", marginTop: "10px" }}>
         <h1>Welcome {adminName}</h1>
       </div>
 
-
       {/* Tabs */}
-      <div style={{ marginTop: "20px", textAlign: "center" , marginBottom:"10px"}}>
+      <div
+        style={{
+          marginTop: "20px",
+          marginBottom: "20px",
+          textAlign: "center",
+          flexWrap: "wrap",
+        }}
+      >
         {["schools", "users", "submissions", "workbooks"].map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
             style={{
               ...buttonStyle(activeTab === tab ? "#1D4ED8" : "#9CA3AF"),
-              color: "#fff",
+              minWidth: "120px",
+              minHeight:"40px"
             }}
+            onMouseEnter={(e) => (e.target.style.opacity = "0.85")}
+            onMouseLeave={(e) => (e.target.style.opacity = "1")}
           >
             {tab === "schools"
               ? "School Data"
@@ -399,6 +457,12 @@ const AdminDashboard = () => {
           </button>
         ))}
       </div>
+
+      {/* ------ Existing UI Blocks (Schools / Users / Submissions / Workbooks) remain same ------ */}
+      {/* Sirf table aur button style ka UI improve ho gaya with hover + separation + responsive */}
+      {/* Place your existing blocks (as in your provided code) here without removing any functionality */}
+
+      {/* Example: */}
 
       {/* Schools */}
       {activeTab === "schools" && (
@@ -412,27 +476,30 @@ const AdminDashboard = () => {
               <button onClick={handleAddSchool} style={buttonStyle("green")}>Add School</button>
             </div>
             {renderTable(
-              ["School", "Location", "Books Reporting Branch", "No. of Students", "Actions"],
+              ["ID","School", "Location", "Books Reporting Branch", "No. of Students", "Actions"],
               entries,
               (row, index) => (
                 <tr key={row.id}>
                   {editingRow === index ? (
                     <>
-                      {["school_name", "location", "reporting_branch", "num_students"].map((k) => (
-                        <td key={k}><input value={editedRow[k] || ""} onChange={(e) => setEditedRow({ ...editedRow, [k]: e.target.value })} /></td>
-                      ))}
-                      <td>
+                      <td>{row.id}</td>
+                      <td style={{ border: "1px solid #ccc", padding: "6px" }}><input value={editedRow.school_name || ""} onChange={(e) => setEditedRow({ ...editedRow, school_name: e.target.value })} /></td>
+                      <td style={{ border: "1px solid #ccc", padding: "6px" }}><input value={editedRow.location || ""} onChange={(e) => setEditedRow({ ...editedRow, location: e.target.value })} /></td>
+                      <td style={{ border: "1px solid #ccc", padding: "6px" }}><input value={editedRow.reporting_branch || ""} onChange={(e) => setEditedRow({ ...editedRow, reporting_branch: e.target.value })} /></td>
+                      <td style={{ border: "1px solid #ccc", padding: "6px" }}><input value={editedRow.num_students || ""} onChange={(e) => setEditedRow({ ...editedRow, num_students: e.target.value })} /></td>
+                      <td style={{ border: "1px solid #ccc", padding: "6px" }}>
                         <button onClick={() => handleSaveClick(index)} style={buttonStyle("green")}>Save</button>
                         <button onClick={handleCancelClick} style={buttonStyle("grey")}>Cancel</button>
                       </td>
                     </>
                   ) : (
                     <>
-                      <td>{row.school_name}</td>
-                      <td>{row.location}</td>
-                      <td>{row.reporting_branch}</td>
-                      <td>{row.num_students}</td>
-                      <td>
+                      <td style={{ border: "1px solid #ccc", padding: "6px" }}>{row.id}</td>
+                      <td style={{ border: "1px solid #ccc", padding: "6px" }}>{row.school_name}</td>
+                      <td style={{ border: "1px solid #ccc", padding: "6px" }}>{row.location}</td>
+                      <td style={{ border: "1px solid #ccc", padding: "6px" }}>{row.reporting_branch}</td>
+                      <td style={{ border: "1px solid #ccc", padding: "6px" }}>{row.num_students}</td>
+                      <td style={{ border: "1px solid #ccc", padding: "6px" }}>
                         <button onClick={() => handleEditClick(row, index)} style={buttonStyle("#1864c7ff")}>Edit</button>
                         <button onClick={() => handleDeleteClick(row.id)} style={buttonStyle("red")}>Remove</button>
                       </td>
@@ -445,7 +512,7 @@ const AdminDashboard = () => {
         )
       )}
 
-      
+
 
       {/* Users */}
       {activeTab === "users" && (
@@ -460,28 +527,28 @@ const AdminDashboard = () => {
             <tr key={u.id}>
               {editingUser === u.id ? (
                 <>
-                  <td>{u.id}</td>
-                  <td>
+                  <td style={{ border: "1px solid #ccc", padding: "6px" }}>{u.id}</td>
+                  <td style={{ border: "1px solid #ccc", padding: "6px" }}>
                     <input value={editedUser.name} onChange={(e) => setEditedUser({ ...editedUser, name: e.target.value })} />
                   </td>
-                  <td>
+                  <td style={{ border: "1px solid #ccc", padding: "6px" }}>
                     <input value={editedUser.email} onChange={(e) => setEditedUser({ ...editedUser, email: e.target.value })} />
                   </td>
-                  <td>
+                  <td style={{ border: "1px solid #ccc", padding: "6px" }}>
                     <input value={editedUser.password} onChange={(e) => setEditedUser({ ...editedUser, password: e.target.value })} />
                   </td>
-                  <td>
+                  <td style={{ border: "1px solid #ccc", padding: "6px" }}>
                     <button onClick={() => handleSaveUser(u.id)} style={buttonStyle("green")}>Save</button>
                     <button onClick={handleCancelUser} style={buttonStyle("grey")}>Cancel</button>
                   </td>
                 </>
               ) : (
                 <>
-                  <td>{u.id}</td>
-                  <td>{u.name}</td>
-                  <td>{u.email}</td>
-                  <td>{u.password}</td>
-                  <td>
+                  <td style={{ border: "1px solid #ccc", padding: "6px" }}>{u.id}</td>
+                  <td style={{ border: "1px solid #ccc", padding: "6px" }}>{u.name}</td>
+                  <td style={{ border: "1px solid #ccc", padding: "6px" }}>{u.email}</td>
+                  <td style={{ border: "1px solid #ccc", padding: "6px" }}>{u.password}</td>
+                  <td style={{ border: "1px solid #ccc", padding: "6px" }}>
                     <button onClick={() => handleEditUser(u)} style={buttonStyle("#1864c7ff")}>Edit</button>
                     <button onClick={() => handleDeleteUser(u.id)} style={buttonStyle("red")}>Delete</button>
                   </td>
@@ -512,19 +579,19 @@ const AdminDashboard = () => {
             filteredSubs,
             (s) => (
               <tr key={s.id}>
-                <td>
+                <td style={{ border: "1px solid #ccc", padding: "6px" }}>
                   <input type="checkbox" checked={selectedSubs.includes(s.id)} onChange={() => toggleSelect(s.id)} />
                 </td>
-                <td>{s.id}</td>
-                <td>{s.school_name}</td>
-                <td>{s.grade}</td>
-                <td>{s.term}</td>
-                <td>{s.workbook}</td>
-                <td>{s.count}</td>
-                <td>{s.remark}</td>
-                <td>{s.submitted_by}</td>
-                <td>{s.submitted_at}</td>
-                <td>{s.delivered}</td>
+                <td style={{ border: "1px solid #ccc", padding: "6px" }}>{s.id}</td>
+                <td style={{ border: "1px solid #ccc", padding: "6px" }}>{s.school_name}</td>
+                <td style={{ border: "1px solid #ccc", padding: "6px" }}>{s.grade}</td>
+                <td style={{ border: "1px solid #ccc", padding: "6px" }}>{s.term}</td>
+                <td style={{ border: "1px solid #ccc", padding: "6px" }}>{s.workbook}</td>
+                <td style={{ border: "1px solid #ccc", padding: "6px" }}>{s.count}</td>
+                <td style={{ border: "1px solid #ccc", padding: "6px" }}>{s.remark}</td>
+                <td style={{ border: "1px solid #ccc", padding: "6px" }}>{s.submitted_by}</td>
+                <td style={{ border: "1px solid #ccc", padding: "6px" }}>{s.submitted_at}</td>
+                <td style={{ border: "1px solid #ccc", padding: "6px" }}>{s.delivered}</td>
               </tr>
             )
           )}
@@ -570,11 +637,11 @@ const AdminDashboard = () => {
             workbooks,
             (w) => (
               <tr key={w.id}>
-                <td>{w.id}</td>
-                <td>{w.grade}</td>
-                <td>{w.workbook_name}</td>
-                <td>{w.quantity}</td>
-                <td>
+                <td style={{ border: "1px solid #ccc", padding: "6px" }}>{w.id}</td>
+                <td style={{ border: "1px solid #ccc", padding: "6px" }}>{w.grade}</td>
+                <td style={{ border: "1px solid #ccc", padding: "6px" }}>{w.workbook_name}</td>
+                <td style={{ border: "1px solid #ccc", padding: "6px" }}>{w.quantity}</td>
+                <td style={{ border: "1px solid #ccc", padding: "6px" }}>
                   <input
                     type="number"
                     min="0"
@@ -596,7 +663,6 @@ const AdminDashboard = () => {
           )}
         </>
       )}
-
 
 
     </div>
