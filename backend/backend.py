@@ -15,7 +15,7 @@ CORS(app)
 
 
 # ---------- SENDGRID EMAIL HELPER ----------
-def send_reset_email(to_email, reset_link):
+def send_reset_email(email, reset_link):
     """
     Uses SendGrid v3 API to send the reset email.
     Requires environment variables:
@@ -31,7 +31,7 @@ def send_reset_email(to_email, reset_link):
     payload = {
         "personalizations": [
             {
-                "to": [{"email": to_email}],
+                "to": [{"email": email}],
                 "subject": "OMOTEC Password Reset"
             }
         ],
