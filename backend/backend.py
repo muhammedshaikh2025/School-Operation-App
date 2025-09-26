@@ -4,7 +4,9 @@ import sqlite3
 import os
 from datetime import datetime, timedelta
 import secrets
-import requests
+
+from sendgrid import SendGridAPIClient
+from sendgrid.helpers.mail import Mail
 
 
 
@@ -14,54 +16,39 @@ app = Flask(__name__)
 CORS(app)
 
 
-# ---------- SENDGRID EMAIL HELPER ----------
-def send_reset_email(email, reset_link):
+# ------------------ SENDGRID EMAIL ------------------
+
+
+SENDGRID_API_KEY = os.environ.get("SENDGRID_API_KEY")  # Render me env var set karna
+
+def send_reset_email(to_email, reset_link):
     """
-    Uses SendGrid v3 API to send the reset email.
-    Requires environment variables:
-      - SENDGRID_API_KEY
-      - SENDGRID_FROM
+    Send password reset email using SendGrid
     """
-    SENDGRID_API_KEY = os.environ.get("SENDGRID_API_KEY")
-    SENDGRID_FROM = os.environ.get("SENDGRID_FROM", "muhammed.shaikh@onmyowntechnology.com")
-
-    if not SENDGRID_API_KEY:
-        raise RuntimeError("SendGrid API key not configured (SENDGRID_API_KEY)")
-
-    payload = {
-        "personalizations": [
-            {
-                "to": [{"email": email}],
-                "subject": "OMOTEC Password Reset"
-            }
-        ],
-        "from": {"email": SENDGRID_FROM, "name": "OMOTEC"},
-        "content": [
-            {
-                "type": "text/plain",
-                "value": (
-                    "Hello,\n\n"
-                    "We received a request to reset your password.\n\n"
-                    f"Click the link below to set a new password (valid for 30 minutes):\n{reset_link}\n\n"
-                    "If you did not request this, please ignore this email.\n\n"
-                    "- OMOTEC Team"
-                )
-            }
-        ]
-    }
-
-    headers = {
-        "Authorization": f"Bearer {SENDGRID_API_KEY}",
-        "Content-Type": "application/json"
-    }
-
-    resp = requests.post("https://api.sendgrid.com/v3/mail/send", headers=headers, json=payload)
-    if resp.status_code >= 400:
-        raise RuntimeError(f"SendGrid error: {resp.status_code} {resp.text}")
-    return True
+    message = Mail(
+        from_email='muhammed.shaikh@onmyowntechnology.com',
+        to_emails=to_email,
+        subject='OMOTEC Password Reset',
+        html_content=f"""
+        <p>Hello,</p>
+        <p>We received a request to reset your password.</p>
+        <p>Click the link below to set a new password (valid for 30 minutes):<br>
+        <a href="{reset_link}">{reset_link}</a></p>
+        <p>If you did not request this, ignore this email.</p>
+        <p>- OMOTEC Team</p>
+        """
+    )
+    try:
+        sg = SendGridAPIClient(SENDGRID_API_KEY)
+        response = sg.send(message)
+        print(f"SendGrid email sent. Status: {response.status_code}")
+    except Exception as e:
+        print("SendGrid error:", e)
+        raise e
 
 
 # ---------- ROUTES ----------
+# ------------------ FORGOT PASSWORD ROUTE ------------------
 @app.route("/forgot-password", methods=["POST"])
 def forgot_password():
     data = request.json or {}
@@ -75,7 +62,8 @@ def forgot_password():
     row = cur.fetchone()
     if not row:
         conn.close()
-        return jsonify({"success": True, "message": "If the email exists, reset link will be sent."})  # safe response
+        # Safe response to prevent email enumeration
+        return jsonify({"success": True, "message": "If the email exists, reset link will be sent."})
 
     # Generate token
     token = secrets.token_urlsafe(24)
@@ -86,8 +74,8 @@ def forgot_password():
     conn.commit()
     conn.close()
 
-    reset_link = f"https://school-operation-app.vercel.app/reset-password?token={token}"
- # change to production URL
+    reset_link = f"https://school-operation-app.vercel.app/reset-password?token={token}"  # Production URL
+
     try:
         send_reset_email(email, reset_link)
         return jsonify({"success": True, "message": "Password reset link sent to your email."})
