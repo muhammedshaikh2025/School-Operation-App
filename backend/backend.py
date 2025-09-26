@@ -23,7 +23,7 @@ def send_reset_email(email, reset_link):
       - SENDGRID_FROM
     """
     SENDGRID_API_KEY = os.environ.get("SENDGRID_API_KEY")
-    SENDGRID_FROM = os.environ.get("SENDGRID_FROM", "noreply@onmyowntechnology.com")
+    SENDGRID_FROM = os.environ.get("SENDGRID_FROM", "muhammed.shaikh@onmyowntechnology.com")
 
     if not SENDGRID_API_KEY:
         raise RuntimeError("SendGrid API key not configured (SENDGRID_API_KEY)")
@@ -86,8 +86,7 @@ def forgot_password():
     conn.commit()
     conn.close()
 
-    FRONTEND_URL = os.environ.get("FRONTEND_URL", "https://school-operation-app.vercel.app")
-    reset_link = f"{FRONTEND_URL}/reset-password?token={token}"
+    reset_link = f"https://school-operation-app.vercel.app/reset-password?token={token}"
  # change to production URL
     try:
         send_reset_email(email, reset_link)
