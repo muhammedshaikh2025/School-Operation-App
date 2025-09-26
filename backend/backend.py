@@ -16,7 +16,7 @@ CORS(app)
 SMTP_HOST = "smtp.gmail.com"
 SMTP_PORT = 587
 SMTP_USER = "muhammed.shaikh@onmyowntechnology.com"      # replace
-SMTP_PASS = "ggpynunrodejufxl"         # replace (Google App Password)
+SMTP_PASS = "bloouznditxssamm"         # replace (Google App Password)
 
 # ---------- SEND EMAIL HELPER ----------
 def send_reset_email(to_email, reset_link):
