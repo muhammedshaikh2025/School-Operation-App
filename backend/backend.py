@@ -4,43 +4,62 @@ import sqlite3
 import os
 from datetime import datetime, timedelta
 import secrets
-import smtplib
-from email.message import EmailMessage
+import requests
+
+
 
 DB_PATH = "workbook.db"  # ✅ Must match DB created during import
 
 app = Flask(__name__)
 CORS(app)
 
-# ---------- SMTP CONFIG ----------
-SMTP_HOST = "smtp.gmail.com"
-SMTP_PORT = 587
-SMTP_USER = "muhammed.shaikh@onmyowntechnology.com"      # replace
-SMTP_PASS = "bloouznditxssamm"         # replace (Google App Password)
 
-# ---------- SEND EMAIL HELPER ----------
+# ---------- SENDGRID EMAIL HELPER ----------
 def send_reset_email(to_email, reset_link):
-    msg = EmailMessage()
-    msg["Subject"] = "OMOTEC Password Reset"
-    msg["From"] = SMTP_USER
-    msg["To"] = to_email
-    msg.set_content(f"""
-Hello,
+    """
+    Uses SendGrid v3 API to send the reset email.
+    Requires environment variables:
+      - SENDGRID_API_KEY
+      - SENDGRID_FROM
+    """
+    SENDGRID_API_KEY = os.environ.get("SENDGRID_API_KEY")
+    SENDGRID_FROM = os.environ.get("SENDGRID_FROM", "noreply@onmyowntechnology.com")
 
-We received a request to reset your password.
+    if not SENDGRID_API_KEY:
+        raise RuntimeError("SendGrid API key not configured (SENDGRID_API_KEY)")
 
-Click the link below to set a new password (valid for 30 minutes):
-{reset_link}
+    payload = {
+        "personalizations": [
+            {
+                "to": [{"email": to_email}],
+                "subject": "OMOTEC Password Reset"
+            }
+        ],
+        "from": {"email": SENDGRID_FROM, "name": "OMOTEC"},
+        "content": [
+            {
+                "type": "text/plain",
+                "value": (
+                    "Hello,\n\n"
+                    "We received a request to reset your password.\n\n"
+                    f"Click the link below to set a new password (valid for 30 minutes):\n{reset_link}\n\n"
+                    "If you did not request this, please ignore this email.\n\n"
+                    "- OMOTEC Team"
+                )
+            }
+        ]
+    }
 
-If you did not request this, you can ignore this email.
+    headers = {
+        "Authorization": f"Bearer {SENDGRID_API_KEY}",
+        "Content-Type": "application/json"
+    }
 
-- OMOTEC Team
-""")
-    smtp = smtplib.SMTP(SMTP_HOST, SMTP_PORT)
-    smtp.starttls()
-    smtp.login(SMTP_USER, SMTP_PASS)
-    smtp.send_message(msg)
-    smtp.quit()
+    resp = requests.post("https://api.sendgrid.com/v3/mail/send", headers=headers, json=payload)
+    if resp.status_code >= 400:
+        raise RuntimeError(f"SendGrid error: {resp.status_code} {resp.text}")
+    return True
+
 
 # ---------- ROUTES ----------
 @app.route("/forgot-password", methods=["POST"])
@@ -67,7 +86,9 @@ def forgot_password():
     conn.commit()
     conn.close()
 
-    reset_link = f" https://school-operation-app.vercel.app/reset-password?token={token}"  # change to production URL
+    FRONTEND_URL = os.environ.get("FRONTEND_URL", "https://school-operation-app.vercel.app")
+    reset_link = f"{FRONTEND_URL}/reset-password?token={token}"
+ # change to production URL
     try:
         send_reset_email(email, reset_link)
         return jsonify({"success": True, "message": "Password reset link sent to your email."})
@@ -576,7 +597,6 @@ def add_workbook():
     conn.close()
 
     return jsonify({"success": True, "id": new_id})
-
 
 # 🔴 NEW: Delete Workbook Route
 @app.route("/admin/workbooks/<int:w_id>", methods=["DELETE"])
