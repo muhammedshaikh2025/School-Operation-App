@@ -505,9 +505,12 @@ const AdminDashboard = () => {
       fetch(`${API_BASE}/admin/form-submissions`)
         .then((res) => res.json())
         .then((data) => {
-          setSubmissions(data);
+          // 🔹 Sort by submitted_at (latest first)
+          const sorted = [...data].sort((a, b) => new Date(b.submitted_at) - new Date(a.submitted_at));
+          setSubmissions(sorted);
           setLoadingSubmissions(false);
         })
+
         .catch(() => setLoadingSubmissions(false));
     }
   }, [activeTab]);
