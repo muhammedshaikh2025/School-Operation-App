@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
+// Importing the required icons
+import { FaSave, FaSignOutAlt } from 'react-icons/fa'; 
 
-const API_BASE = "https://school-operation-app.onrender.com";
+const API_BASE = "http://127.0.0.1:5001";
 
 const FormPage = () => {
+  // State initialization (UNCHANGED)
   const [schools, setSchools] = useState([]);
   const [locations, setLocations] = useState([]);
   const [school, setSchool] = useState("");
@@ -21,7 +24,7 @@ const FormPage = () => {
   const userEmail = localStorage.getItem("userEmail") || "";
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
 
-  // Responsive logic
+  // Responsive logic (UNCHANGED)
   useEffect(() => {
     const handleResize = () => {
       setIsMobile(window.innerWidth <= 768);
@@ -30,24 +33,22 @@ const FormPage = () => {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
+  // Fetch Grades (UNCHANGED)
   useEffect(() => {
     axios.get(`${API_BASE}/grades`)
       .then(res => setGrades(res.data || []))
       .catch(() => setGrades([]));
   }, []);
 
-  const handleGradeChange = (g) => {
-    setGrade(g);
-    setWorkbook("");
-    setWorkbookOptions([]);
-    fetchWorkbookOptions(g);
-  };
-
-  const fetchWorkbookOptions = async (g) => {
-    if (!g) return;
+  // Fetch Workbook Options
+  const fetchWorkbookOptions = async (g, s, loc) => {
+    if (!g) {
+      setWorkbookOptions([]);
+      return;
+    }
     try {
       const res = await axios.get(`${API_BASE}/workbook_name`, {
-        params: { grade: g },
+        params: { grade: g, school: s, location: loc },
       });
       setWorkbookOptions(res.data.workbooks || []);
     } catch {
@@ -55,6 +56,7 @@ const FormPage = () => {
     }
   };
 
+  // Fetch User Info (UNCHANGED)
   useEffect(() => {
     if (userEmail) {
       axios
@@ -66,6 +68,7 @@ const FormPage = () => {
     }
   }, [userEmail]);
 
+  // Fetch Schools (UNCHANGED)
   useEffect(() => {
     axios
       .get(`${API_BASE}/schools`)
@@ -73,6 +76,7 @@ const FormPage = () => {
       .catch(() => setSchools([]));
   }, []);
 
+  // Fetch Locations (UNCHANGED logic, but used in handler)
   const fetchLocations = async (s) => {
     try {
       const res = await axios.get(`${API_BASE}/locations`, {
@@ -89,6 +93,7 @@ const FormPage = () => {
     }
   };
 
+  // Fetch Reporting Branch (UNCHANGED)
   const fetchReportingBranch = async (s, loc) => {
     try {
       const res = await axios.get(`${API_BASE}/reporting_branch`, {
@@ -100,22 +105,45 @@ const FormPage = () => {
     }
   };
 
+  // 1. School Change Handler (Fixed cascading reset)
   const handleSchoolChange = (s) => {
     setSchool(s);
+    // Reset all dependent fields
     setLocation("");
     setReportingBranch("");
+    setGrade("");
+    setTerm("");
     setWorkbook("");
     setWorkbookOptions([]);
     fetchLocations(s);
   };
 
+  // 2. Location Change Handler (Fixed cascading reset)
   const handleLocationChange = (loc) => {
     setLocation(loc);
+    // Reset grade/workbook as they may depend on location
+    setGrade("");
+    setTerm("");
     setWorkbook("");
     setWorkbookOptions([]);
-    if (school) fetchReportingBranch(school, loc);
+    
+    if (school && loc) {
+        fetchReportingBranch(school, loc);
+    } else {
+        setReportingBranch("");
+    }
   };
 
+  // 3. Grade Change Handler (Fixed cascading reset)
+  const handleGradeChange = (g) => {
+    setGrade(g);
+    setWorkbook("");
+    setWorkbookOptions([]);
+    // Pass school and location for robust workbook fetching
+    fetchWorkbookOptions(g, school, location); 
+  };
+  
+  // Submission Logic (UNCHANGED)
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!school) return alert("School must be filled!");
@@ -168,22 +196,45 @@ const FormPage = () => {
     width: "100%",
     boxSizing: "border-box",
     transition: "border-color 0.2s, box-shadow 0.2s",
+    backgroundColor: "white",
   };
   const hoverInputStyle = {
-    borderColor: "#007bff",
-    boxShadow: "0 0 5px rgba(0, 123, 255, 0.5)",
+    borderColor: "#4F46E5", 
+    boxShadow: "0 0 5px rgba(79, 70, 229, 0.5)",
     outline: "none",
   };
   const buttonStyle = {
     padding: "12px",
     borderRadius: 8,
     border: "none",
-    backgroundColor: "#007bff",
+    backgroundColor: "#10B981", 
     color: "#fff",
     fontSize: 16,
+    fontWeight: "bold",
     cursor: "pointer",
-    transition: "background-color 0.3s",
+    transition: "background-color 0.3s, transform 0.1s",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8, // Added gap for icon
   };
+
+  // Function to apply hover styles
+  const applyHover = (e) => Object.assign(e.target.style, hoverInputStyle);
+  const removeHover = (e) => Object.assign(e.target.style, sharedInputStyle);
+
+  const applySubmitHover = (e) => e.target.style.backgroundColor = "#047857";
+  const removeSubmitHover = (e) => e.target.style.backgroundColor = "#10B981";
+
+  const applyLogoutHover = (e) => e.target.style.backgroundColor = "#B91C1C";
+  const removeLogoutHover = (e) => e.target.style.backgroundColor = "#EF4444";
+
+  const readOnlyInputStyle = {
+    backgroundColor: '#eef2ff',
+    color: '#4b5563',
+    cursor: 'not-allowed',
+  };
+
 
   return (
     <div style={styles.container}>
@@ -197,26 +248,31 @@ const FormPage = () => {
         
         <button
           onClick={handleLogout}
-          style={styles.logoutBtn}
-          onMouseEnter={(e) => (e.target.style.backgroundColor = "#c82333")}
-          onMouseLeave={(e) => (e.target.style.backgroundColor = "#dc3545")}
+          style={{...styles.logoutBtn, backgroundColor: "#EF4444"}}
+          onMouseEnter={applyLogoutHover}
+          onMouseLeave={removeLogoutHover}
         >
-          Logout
+            {/* LOGOUT ICON ADDED */}
+            <FaSignOutAlt style={{ marginRight: '5px' }} /> 
+            Logout
         </button>
       </div>
 
-      <h1 style={{...styles.greeting, marginTop: isMobile ? "10px" : "0"}}>Welcome {userName}</h1>
+      <h1 style={{...styles.greeting, marginTop: isMobile ? "10px" : "0"}}>
+        Welcome <span style={{color: "#4F46E5", fontWeight: 700}}>{userName}</span>
+      </h1>
       <h2 style={styles.title}>Workbook Entry</h2>
       
       <form onSubmit={handleSubmit} style={styles.form}>
+        {/* 1. School */}
         <div style={styles.field}>
           <label style={styles.label}>School</label>
           <select
             value={school}
             onChange={(e) => handleSchoolChange(e.target.value)}
             style={sharedInputStyle}
-            onMouseEnter={(e) => Object.assign(e.target.style, hoverInputStyle)}
-            onMouseLeave={(e) => Object.assign(e.target.style, sharedInputStyle)}
+            onMouseEnter={applyHover}
+            onMouseLeave={removeHover}
           >
             <option value="">Select School</option>
             {schools.map((s, i) => (
@@ -227,15 +283,17 @@ const FormPage = () => {
           </select>
         </div>
 
+        {/* 2. Location */}
         <div style={styles.field}>
           <label style={styles.label}>Location</label>
           {locations.length > 1 ? (
             <select
               value={location}
               onChange={(e) => handleLocationChange(e.target.value)}
-              style={sharedInputStyle}
-              onMouseEnter={(e) => Object.assign(e.target.style, hoverInputStyle)}
-              onMouseLeave={(e) => Object.assign(e.target.style, sharedInputStyle)}
+              style={{...sharedInputStyle, ...(!school ? readOnlyInputStyle : {})}}
+              disabled={!school}
+              onMouseEnter={applyHover}
+              onMouseLeave={removeHover}
             >
               <option value="">Select Location</option>
               {locations.map((l, i) => (
@@ -249,23 +307,28 @@ const FormPage = () => {
               value={location}
               onChange={(e) => handleLocationChange(e.target.value)}
               placeholder="Location"
-              readOnly={locations.length === 1}
-              style={{...sharedInputStyle, color: locations.length === 1 ? '#6c757d' : '#000'}}
-              onMouseEnter={(e) => Object.assign(e.target.style, hoverInputStyle)}
-              onMouseLeave={(e) => Object.assign(e.target.style, sharedInputStyle)}
+              readOnly={locations.length === 1 && location !== ""}
+              disabled={!school}
+              style={{
+                ...sharedInputStyle,
+                ...((locations.length === 1 && location !== "") || !school ? readOnlyInputStyle : {}),
+              }}
+              onMouseEnter={applyHover}
+              onMouseLeave={removeHover}
             />
           )}
         </div>
 
         <div style={{...styles.row, flexDirection: isMobile ? "column" : "row"}}>
+          {/* 3. Grade */}
           <div style={{ ...styles.field, flex: 1 }}>
             <label style={styles.label}>Grade</label>
             <select
               value={grade}
               onChange={(e) => handleGradeChange(e.target.value)}
               style={sharedInputStyle}
-              onMouseEnter={(e) => Object.assign(e.target.style, hoverInputStyle)}
-              onMouseLeave={(e) => Object.assign(e.target.style, sharedInputStyle)}
+              onMouseEnter={applyHover}
+              onMouseLeave={removeHover}
             >
               <option value="">Select Grade</option>
               {grades.map((g, i) => (
@@ -276,14 +339,15 @@ const FormPage = () => {
             </select>
           </div>
 
+          {/* 4. Term */}
           <div style={{ ...styles.field, flex: 1 }}>
             <label style={styles.label}>Term</label>
             <select
               value={term}
               onChange={(e) => setTerm(e.target.value)}
               style={sharedInputStyle}
-              onMouseEnter={(e) => Object.assign(e.target.style, hoverInputStyle)}
-              onMouseLeave={(e) => Object.assign(e.target.style, sharedInputStyle)}
+              onMouseEnter={applyHover}
+              onMouseLeave={removeHover}
             >
               <option value="">Select Term</option>
               {[1, 2, 3].map((t) => (
@@ -295,14 +359,16 @@ const FormPage = () => {
           </div>
         </div>
 
+        {/* 5. Workbook */}
         <div style={styles.field}>
           <label style={styles.label}>Workbook</label>
           <select
             value={workbook}
             onChange={(e) => setWorkbook(e.target.value)}
-            style={sharedInputStyle}
-            onMouseEnter={(e) => Object.assign(e.target.style, hoverInputStyle)}
-            onMouseLeave={(e) => Object.assign(e.target.style, sharedInputStyle)}
+            style={{...sharedInputStyle, ...((!grade || workbookOptions.length === 0) ? readOnlyInputStyle : {})}}
+            disabled={!grade || workbookOptions.length === 0}
+            onMouseEnter={applyHover}
+            onMouseLeave={removeHover}
           >
             <option value="">Select Workbook</option>
             {workbookOptions.map((wb, i) => (
@@ -313,31 +379,33 @@ const FormPage = () => {
           </select>
         </div>
 
+        {/* 6. Books Reporting Branch (Read-Only) */}
         <div style={styles.field}>
           <label style={styles.label}>Books Reporting Branch</label>
           <input
             value={reportingBranch}
             readOnly
             placeholder="Auto-filled"
-            style={{...sharedInputStyle, color: '#6c757d', backgroundColor: '#f8f9fa'}}
-            onMouseEnter={(e) => Object.assign(e.target.style, hoverInputStyle)}
-            onMouseLeave={(e) => Object.assign(e.target.style, sharedInputStyle)}
+            style={{...sharedInputStyle, ...readOnlyInputStyle}}
           />
         </div>
 
+        {/* 7. Count */}
         <div style={styles.field}>
           <label style={styles.label}>Count</label>
           <input
             type="number"
+            min="0"
             value={count}
             onChange={(e) => setCount(Math.max(0, e.target.value))}
             placeholder="Count"
             style={sharedInputStyle}
-            onMouseEnter={(e) => Object.assign(e.target.style, hoverInputStyle)}
-            onMouseLeave={(e) => Object.assign(e.target.style, sharedInputStyle)}
+            onMouseEnter={applyHover}
+            onMouseLeave={removeHover}
           />
         </div>
 
+        {/* 8. Remark */}
         <div style={styles.field}>
           <label style={styles.label}>Remark</label>
           <input
@@ -345,8 +413,8 @@ const FormPage = () => {
             onChange={(e) => setRemark(e.target.value)}
             placeholder="Remark"
             style={sharedInputStyle}
-            onMouseEnter={(e) => Object.assign(e.target.style, hoverInputStyle)}
-            onMouseLeave={(e) => Object.assign(e.target.style, sharedInputStyle)}
+            onMouseEnter={applyHover}
+            onMouseLeave={removeHover}
           />
         </div>
 
@@ -354,9 +422,11 @@ const FormPage = () => {
           type="submit"
           style={buttonStyle}
           disabled={loading}
-          onMouseEnter={(e) => (e.target.style.backgroundColor = "#0056b3")}
-          onMouseLeave={(e) => (e.target.style.backgroundColor = "#007bff")}
+          onMouseEnter={applySubmitHover}
+          onMouseLeave={removeSubmitHover}
         >
+            {/* SUBMIT ICON ADDED */}
+            <FaSave style={{ marginRight: '5px' }} /> 
           {loading ? "Submitting..." : "Submit"}
         </button>
       </form>
@@ -366,37 +436,58 @@ const FormPage = () => {
 
 const styles = {
   container: {
-    maxWidth: 600,
+    maxWidth: 700,
     margin: "40px auto",
-    padding: 20,
+    padding: 30,
     borderRadius: 12,
-    boxShadow: "0 4px 20px rgba(0,0,0,0.1)",
-    backgroundColor: "#fff",
-    fontFamily: "Arial, sans-serif",
+    boxShadow: "0 10px 20px rgba(0,0,0,0.1)",
+    backgroundColor: "#ffffff",
+    fontFamily: "'Inter', sans-serif",
+    border: '1px solid #e5e7eb',
   },
   header: {
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 20,
+    marginBottom: 30,
+    paddingBottom: 15,
+    borderBottom: '2px solid #e0e7ff',
     flexWrap: "wrap",
+    gap: 15,
   },
-  logo: { width: 200, height: 60 },
-  greeting: { flex: 1, textAlign: "center", color: "#444" },
+  logo: { width: 250, height: 70 },
+  greeting: { fontSize: '2rem', textAlign: "center", color: "#111827" },
   logoutBtn: {
-    padding: "8px 16px",
-    borderRadius: 6,
+    padding: "10px 18px",
+    borderRadius: 8,
     border: "none",
-    backgroundColor: "#dc3545",
+    backgroundColor: "#EF4444",
     color: "#fff",
+    fontSize: 16,
+    fontWeight: 600,
     cursor: "pointer",
-    transition: "background-color 0.3s",
+    transition: "background-color 0.3s, transform 0.1s",
+    display: 'flex', // Added for icon alignment
+    alignItems: 'center', // Added for icon alignment
   },
-  title: { textAlign: "center", marginBottom: 20, color: "#333" },
-  form: { display: "flex", flexDirection: "column", gap: 15 },
-  field: { display: "flex", flexDirection: "column", gap: 5 },
-  label: { fontSize: 14, fontWeight: "bold", color: "#444" },
-  row: { display: "flex", gap: 10 },
+  title: { 
+    fontSize: '1.75rem', 
+    fontWeight: 700,
+    marginBottom: 25, 
+    color: "#111827",
+    borderLeft: '5px solid #4F46E5',
+    paddingLeft: 12,
+    textAlign: 'left',
+  },
+  form: { 
+    display: "flex", 
+    flexDirection: "column", 
+    gap: 20,
+    paddingBottom: 10,
+  },
+  field: { display: "flex", flexDirection: "column", gap: 8 },
+  label: { fontSize: 14, fontWeight: "bold", color: "#374151" },
+  row: { display: "flex", gap: 20 },
 };
 
 export default FormPage;
