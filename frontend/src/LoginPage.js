@@ -71,7 +71,7 @@ export default function LoginPage({ onLogin }) {
 
     setLoading(true);
     try {
-      const res = await axios.post(`${API_BASE}/reset-password`, { email: userEmail });
+      const res = await axios.post(`${API_BASE}/forgot-password`, { email: userEmail });
       if (res.data.success) {
         setForgotMessage(res.data.message || "Check your email for password reset instructions.");
         // Optional: Hide the input after success
