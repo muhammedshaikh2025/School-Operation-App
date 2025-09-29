@@ -3,7 +3,7 @@ import axios from "axios";
 // Inline SVG icons are used instead of react-icons/fa to resolve compilation error.
 
 // NOTE: In a real environment, replace window.alert with a custom modal for better UX.
-const API_BASE = "http://127.0.0.1:5001";
+const API_BASE = "https://school-operation-app.onrender.com";
 
 // Inline SVG Components
 const SignInIcon = ({ style }) => (

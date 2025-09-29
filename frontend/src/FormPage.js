@@ -3,7 +3,7 @@ import axios from "axios";
 // Importing the required icons
 import { FaSave, FaSignOutAlt } from 'react-icons/fa'; 
 
-const API_BASE = "http://127.0.0.1:5001";
+const API_BASE = "https://school-operation-app.onrender.com";
 
 const FormPage = () => {
   // State initialization (UNCHANGED)

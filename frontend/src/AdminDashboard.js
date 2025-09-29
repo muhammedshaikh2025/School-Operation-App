@@ -5,7 +5,7 @@ import styled from "styled-components";
 // Import icons for a better UI experience
 import { FaSchool, FaUsers, FaClipboardList, FaBookOpen, FaSearch, FaTimes, FaSignOutAlt, FaPlus, FaSave, FaTrash, FaEdit, FaCheck, FaTimesCircle, FaCalendarAlt, FaDownload, FaMinus } from 'react-icons/fa';
 
-const API_BASE = "http://127.0.0.1:5001";
+const API_BASE = "https://school-operation-app.onrender.com";
 
 // --- Styled Components for UI Consistency and Responsiveness (IMPROVED) ---
 
