@@ -1,5 +1,7 @@
 flask
 flask-cors
 gunicorn
-psycopg2-binary
+mysql-connector-python
 sendgrid
+python-dotenv
+Werkzeug
