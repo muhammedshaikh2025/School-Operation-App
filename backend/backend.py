@@ -10,6 +10,7 @@ from sendgrid.helpers.mail import Mail
 from werkzeug.security import generate_password_hash, check_password_hash
 from dotenv import load_dotenv
 import pytz
+
 # .env file se environment variables load karo
 load_dotenv()
 
@@ -117,6 +118,7 @@ def forgot_password():
         cur.close()
         conn.close()
 
+
 @app.route("/reset-password", methods=["POST"])
 def reset_password():
     data = request.json or {}
@@ -128,8 +130,8 @@ def reset_password():
 
     conn = get_conn()
     cur = conn.cursor(dictionary=True)
+
     try:
-        # Token fetch
         cur.execute("SELECT email, expires_at FROM reset_tokens WHERE token=%s", (token,))
         row = cur.fetchone()
 
@@ -139,12 +141,21 @@ def reset_password():
         email = row['email']
         expires_at = row['expires_at']
 
-        # 🔹 Convert expires_at to timezone-aware datetime
+        # 🔹 Convert expires_at to datetime safely
         if isinstance(expires_at, str):
-            expires_at = datetime.strptime(expires_at, "%Y-%m-%d %H:%M:%S")
+            try:
+                # Try with microseconds
+                expires_at = datetime.strptime(expires_at, "%Y-%m-%d %H:%M:%S.%f")
+            except ValueError:
+                # fallback: without microseconds
+                expires_at = datetime.strptime(expires_at, "%Y-%m-%d %H:%M:%S")
+        elif isinstance(expires_at, datetime):
+            pass  # already datetime
+
+        # 🔹 Make expires_at timezone-aware in UTC
         expires_at = pytz.UTC.localize(expires_at)
 
-        # 🔹 Compare with UTC now
+        # 🔹 Compare with current UTC time
         now_utc = datetime.utcnow().replace(tzinfo=pytz.UTC)
         if now_utc > expires_at:
             return jsonify({"success": False, "message": "Token expired"}), 400
@@ -152,7 +163,7 @@ def reset_password():
         # 🔹 Hash new password
         hashed_password = generate_password_hash(new_password)
 
-        # 🔹 Update password & delete token
+        # 🔹 Update user password and delete token
         cur.execute("UPDATE users SET password=%s WHERE email=%s", (hashed_password, email))
         cur.execute("DELETE FROM reset_tokens WHERE token=%s", (token,))
         conn.commit()
@@ -162,6 +173,7 @@ def reset_password():
     except mysql.connector.Error as err:
         conn.rollback()
         return jsonify({"success": False, "message": f"Database error: {err}"}), 500
+
     finally:
         cur.close()
         conn.close()
