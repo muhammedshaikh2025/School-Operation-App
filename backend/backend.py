@@ -171,10 +171,11 @@ def login():
     cur.close()
     conn.close()
 
-    if user and check_password_hash(user['password'], password):
+    if user and user['password'] == password:
         return jsonify({"success": True, "role": user['role'], "email": email})
     else:
         return jsonify({"success": False, "message": "Invalid credentials"}), 401
+
 
 # --- USER MANAGEMENT (ADMIN) ---
 @app.route("/admin/users", methods=["GET"])
