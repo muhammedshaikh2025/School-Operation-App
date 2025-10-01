@@ -336,7 +336,7 @@ const AdminDashboard = () => {
   };
 
   const schoolColumns = useMemo(() => [
-    { name: "ID", selector: (row) => row.id, sortable: true, width: '100px' },
+    {name: "S.No", width: '80px', cell: (row, index) => index + 1 },
     {
       name: "School Name", selector: (row) => row.school_name, sortable: true, wrap: true,
       cell: (row) => editingRow === row.id ?
@@ -449,7 +449,7 @@ const AdminDashboard = () => {
   };
 
   const userColumns = useMemo(() => [
-    { name: "ID", selector: (row) => row.id, sortable: true, width: '100px' },
+    { name: "S.No", width: '80px', cell: (row, index) => index + 1 },
     {
       name: "Name", selector: (row) => row.name, sortable: true, wrap: true,
       cell: (row) => editingUser === row.id ?
@@ -615,7 +615,7 @@ const AdminDashboard = () => {
       button: true,
       width: '80px',
     },
-    { name: "ID", selector: (row) => row.id, sortable: true, width: '80px' },
+    { name: "S.No", width: '80px', cell: (row, index) => index + 1 },
     { name: "School Name", selector: (row) => row.school_name, sortable: true, wrap: true, minWidth: '200px', cell: (row) => <div style={{ lineHeight: "1.6" }}>{row.school_name}</div> },
     { name: "Grade", selector: (row) => row.grade, sortable: true, width: '100px' },
     { name: "Term", selector: (row) => row.term, sortable: true, width: '100px' },
@@ -711,7 +711,7 @@ const AdminDashboard = () => {
   };
 
   const workbookColumns = useMemo(() => [
-    { name: "ID", selector: (row) => row.id, sortable: true, width: '100px' },
+    { name: "S.No", width: '80px', cell: (row, index) => index + 1 },
     { name: "Grade", selector: (row) => row.grade, sortable: true, width: '100px' },
     { name: "Workbook Name", selector: (row) => row.workbook_name, sortable: true, wrap: true, minWidth: '150px' },
     { name: "Current Stock Qty", selector: (row) => row.quantity, sortable: true, width: '200px' },

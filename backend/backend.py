@@ -9,7 +9,7 @@ from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail
 from werkzeug.security import generate_password_hash, check_password_hash
 from dotenv import load_dotenv
-
+import pytz
 # .env file se environment variables load karo
 load_dotenv()
 
@@ -129,6 +129,7 @@ def reset_password():
     conn = get_conn()
     cur = conn.cursor(dictionary=True)
     try:
+        # Token fetch
         cur.execute("SELECT email, expires_at FROM reset_tokens WHERE token=%s", (token,))
         row = cur.fetchone()
 
@@ -138,21 +139,26 @@ def reset_password():
         email = row['email']
         expires_at = row['expires_at']
 
-        # 🔹 Fix: convert expires_at to datetime if it's a string
+        # 🔹 Convert expires_at to timezone-aware datetime
         if isinstance(expires_at, str):
             expires_at = datetime.strptime(expires_at, "%Y-%m-%d %H:%M:%S")
+        expires_at = pytz.UTC.localize(expires_at)
 
-        if datetime.utcnow() > expires_at:
+        # 🔹 Compare with UTC now
+        now_utc = datetime.utcnow().replace(tzinfo=pytz.UTC)
+        if now_utc > expires_at:
             return jsonify({"success": False, "message": "Token expired"}), 400
 
-        # 🔹 Hash the new password before storing
+        # 🔹 Hash new password
         hashed_password = generate_password_hash(new_password)
 
+        # 🔹 Update password & delete token
         cur.execute("UPDATE users SET password=%s WHERE email=%s", (hashed_password, email))
         cur.execute("DELETE FROM reset_tokens WHERE token=%s", (token,))
         conn.commit()
 
         return jsonify({"success": True, "message": "Password reset successful"})
+
     except mysql.connector.Error as err:
         conn.rollback()
         return jsonify({"success": False, "message": f"Database error: {err}"}), 500
