@@ -17,7 +17,7 @@ load_dotenv()
 try:
     # SSL arguments for the secure connection
     ssl_args = {
-        'ssl_ca': os.environ.get("DB_SSL_CA"),    # Path to your ca.pem file
+        'ssl_ca': os.environ.get("C:\Users\OMOPC012\Desktop\School-Operation-App\backend\ca.pem"),    # Path to your ca.pem file
         'ssl_verify_identity': True
     }
 
