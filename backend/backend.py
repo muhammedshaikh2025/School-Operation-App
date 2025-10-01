@@ -43,7 +43,7 @@ except mysql.connector.Error as err:
 app = Flask(__name__)
 CORS(app)
 
-
+hashed_pw = generate_password_hash("user_plain_password")
 # --- HELPERS ---
 def get_conn():
     """Gets a connection from the pool."""
@@ -171,11 +171,10 @@ def login():
     cur.close()
     conn.close()
 
-    if user and user['password'] == password:
+    if user and check_password_hash(user['password'], password):
         return jsonify({"success": True, "role": user['role'], "email": email})
     else:
         return jsonify({"success": False, "message": "Invalid credentials"}), 401
-
 
 # --- USER MANAGEMENT (ADMIN) ---
 @app.route("/admin/users", methods=["GET"])
@@ -451,6 +450,20 @@ def get_locations():
     conn.close()
     return jsonify(locations)
 
+@app.route("/reporting_branch", methods=["GET"])
+def get_reporting_branch():
+    school = request.args.get("school", "")
+    location = request.args.get("location", "")
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute("SELECT reporting_branch FROM school_data WHERE school_name=%s AND location=%s LIMIT 1",
+                (school, location))
+    r = cur.fetchone()
+    conn.close()
+    return jsonify({"reporting_branch": r[0] if r else ""})
+
+
+
 @app.route("/grades", methods=["GET"])
 def get_grades():
     conn = get_conn()
@@ -461,19 +474,27 @@ def get_grades():
     conn.close()
     return jsonify(grades)
 
+
+
+
 @app.route("/workbook_name", methods=["GET"])
 def workbooks_by_grade():
     grade = request.args.get("grade")
+    if not grade:
+        return jsonify({"workbooks": []})
+
     conn = get_conn()
     cur = conn.cursor()
     cur.execute(
         "SELECT DISTINCT workbook_name FROM workbook_status WHERE grade=%s ORDER BY workbook_name",
         (grade,)
     )
-    workbooks = [r[0] for r in cur.fetchall()]
-    cur.close()
+    rows = cur.fetchall()
     conn.close()
-    return jsonify(workbooks)
+
+    workbooks = [r[0] for r in rows]
+    return jsonify({"workbooks": workbooks})
+
 
 @app.route("/submit", methods=["POST"])
 def submit_form():
