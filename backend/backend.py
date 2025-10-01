@@ -97,7 +97,9 @@ def forgot_password():
             return jsonify({"success": True, "message": "If the email exists, a reset link will be sent."})
 
         token = secrets.token_urlsafe(24)
-        expires = (datetime.utcnow() + timedelta(minutes=30))
+
+        # 🔹 UTC-safe expiration without microseconds problem
+        expires = datetime.utcnow().replace(microsecond=0) + timedelta(minutes=30)
 
         cur.execute(
             "INSERT INTO reset_tokens (email, token, expires_at) VALUES (%s, %s, %s)",
@@ -105,7 +107,7 @@ def forgot_password():
         )
         conn.commit()
 
-        # IMPORTANT: Fix the reset link - it had a typo '%s'
+        # IMPORTANT: Fix the reset link
         reset_link = f"https://school-operation-app.vercel.app/reset-password?token={token}"
 
         try:
@@ -117,6 +119,7 @@ def forgot_password():
     finally:
         cur.close()
         conn.close()
+
 
 
 @app.route("/reset-password", methods=["POST"])
