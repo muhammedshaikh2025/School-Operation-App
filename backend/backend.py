@@ -136,11 +136,16 @@ def reset_password():
             return jsonify({"success": False, "message": "Invalid or expired token"}), 400
 
         email = row['email']
-        expires_at = row['expires_at'] # This is already a datetime object from the DB
+        expires_at = row['expires_at']
+
+        # 🔹 Fix: convert expires_at to datetime if it's a string
+        if isinstance(expires_at, str):
+            expires_at = datetime.strptime(expires_at, "%Y-%m-%d %H:%M:%S")
 
         if datetime.utcnow() > expires_at:
             return jsonify({"success": False, "message": "Token expired"}), 400
 
+        # 🔹 Hash the new password before storing
         hashed_password = generate_password_hash(new_password)
 
         cur.execute("UPDATE users SET password=%s WHERE email=%s", (hashed_password, email))
