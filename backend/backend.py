@@ -17,9 +17,10 @@ load_dotenv()
 try:
     # SSL arguments for the secure connection
     ssl_args = {
-        'ssl_ca': "\ca.pem",    # Path to your ca.pem file
+        'ssl_ca': os.environ.get("DB_SSL_CA"),    
         'ssl_verify_identity': True
     }
+
 
     db_pool = pooling.MySQLConnectionPool(
         pool_name="mypool",
@@ -28,10 +29,10 @@ try:
         user=os.environ.get("DB_USER"),
         password=os.environ.get("DB_PASSWORD"),
         database=os.environ.get("DB_NAME"),
-        port=os.environ.get("DB_PORT"),
-        # Add the SSL arguments to the connection
+        port=int(os.environ.get("DB_PORT")),
         **ssl_args
     )
+
     print("Database connection pool created successfully for TiDB Cloud.")
 except mysql.connector.Error as err:
     print(f"Error creating connection pool: {err}")
